@@ -44,12 +44,12 @@ const examples = [
   '2^128',
   '1/3 + 1/3 + 1/3',
   'Factor[360]',
-  '20!',
-  'Fibonacci[100]',
-  'PrimeQ[2^61 - 1]',
   'N[Pi, 50]',
-  'Sqrt[2]',
-  'Sin[Pi/4]',
+  '(1 + I)^2',
+  'Sqrt[-4]',
+  'Det[{{1, 2}, {3, 4}}]',
+  'PowerMod[7, 100, 13]',
+  'Fibonacci[100]',
   'LatticeReduce[{{1, 1, 1}, {-1, 0, 2}, {3, 5, 6}}]',
 ]
 

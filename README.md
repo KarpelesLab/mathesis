@@ -84,6 +84,12 @@ Builtins (all delegating to `puremp`):
   `Log[b, x]` base `b`), `Log2`, `Log10`; `Sin`, `Cos`, `Tan`, `ArcSin`,
   `ArcCos`, `ArcTan` (`ArcTan[x, y]` = atan2); `Sinh`, `Cosh`, `Tanh`,
   `ArcSinh`, `ArcCosh`, `ArcTanh`.
+- **Complex** (exact, Gaussian rationals) — the imaginary unit `I`, plus `Re`,
+  `Im`, `Conjugate`, `Abs`, `Arg`; exact `+ - * /` and integer powers, e.g.
+  `(1 + I)^2` → `2 I`, `Sqrt[-4]` → `2 I`, `1/(1 + I)` → `1/2 - 1/2 I`. Inexact
+  complex (e.g. `Pi*I`, `Sqrt[-2]`) is not supported yet — it reports a clear
+  error rather than a wrong answer, because `puremp`'s `Float` has no operator
+  impls for `Complex<Float>`.
 - **Linear algebra** (exact, over rationals) — `Det`, `Inverse`, `Transpose`,
   `Dot`, `MatrixRank`, `LinearSolve`, `IdentityMatrix`; `LatticeReduce` (LLL
   reduction of an integer basis, optional second argument δ ∈ (1/4, 1]).

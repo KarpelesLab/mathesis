@@ -231,6 +231,23 @@ mod tests {
     }
 
     #[test]
+    fn complex_numbers() {
+        assert!(out("I").contains("\"text\":\"I\""), "{}", out("I"));
+        assert!(out("I^2").contains("\"text\":\"-1\""));
+        assert!(out("(1 + I)^2").contains("2 I"), "{}", out("(1 + I)^2"));
+        assert!(out("(3 + 4*I)*(3 - 4*I)").contains("\"text\":\"25\""));
+        assert!(out("Re[3 + 4*I]").contains("\"text\":\"3\""));
+        assert!(out("Im[3 + 4*I]").contains("\"text\":\"4\""));
+        assert!(out("Conjugate[3 + 4*I]").contains("3 - 4 I"), "{}", out("Conjugate[3 + 4*I]"));
+        assert!(out("Abs[3 + 4*I]").contains("\"text\":\"5\""));
+        assert!(out("Sqrt[-4]").contains("2 I"), "{}", out("Sqrt[-4]"));
+        assert!(out("Sqrt[-1]").contains("\"text\":\"I\""));
+        assert!(out("1/(1 + I)").contains("1/2 - 1/2 I"), "{}", out("1/(1 + I)"));
+        // inexact complex isn't supported → a clear error, not a wrong answer.
+        assert!(out("Pi*I").contains("\"ok\":false"), "{}", out("Pi*I"));
+    }
+
+    #[test]
     fn errors_are_reported() {
         assert!(out("1/0").contains("\"ok\":false"));
         assert!(out("Foo[1]").contains("unknown function"));

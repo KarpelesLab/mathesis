@@ -5,7 +5,7 @@
 
 use core::cell::RefCell;
 
-use puremp::{Float, Int, Matrix, Rational, RoundingMode, lll_reduce, lll_reduce_delta};
+use puremp::{Complex, Float, Int, Matrix, Rational, RoundingMode, lll_reduce, lll_reduce_delta};
 
 use crate::ast::{Expr, Op};
 use crate::error::{EResult, EvalError, err};
@@ -83,6 +83,8 @@ fn symbol(name: &str) -> EResult<Value> {
             tex: "e".into(),
             val: Float::e(WORK_BITS, NEAR),
         }),
+        // The imaginary unit.
+        "I" => Ok(Value::Cplx(Complex::imaginary(Rational::from_integer(Int::from(1))))),
         _ => err(format!("undefined symbol `{name}`")),
     }
 }
@@ -362,7 +364,36 @@ fn call(head: &str, args: &[Value]) -> EResult<Value> {
         }
         "Abs" => {
             arity(head, args, 1)?;
-            value::abs(&args[0])
+            match &args[0] {
+                // |a + b i| = sqrt(a² + b²).
+                Value::Cplx(c) => sqrt(&value::from_rational(c.norm_sqr())),
+                _ => value::abs(&args[0]),
+            }
+        }
+        "Re" => {
+            arity(head, args, 1)?;
+            match &args[0] {
+                Value::Cplx(c) => Ok(value::from_rational(c.re.clone())),
+                other => value::to_float(other).map(|_| other.clone()),
+            }
+        }
+        "Im" => {
+            arity(head, args, 1)?;
+            match &args[0] {
+                Value::Cplx(c) => Ok(value::from_rational(c.im.clone())),
+                other => value::to_float(other).map(|_| Value::Int(Int::from(0))),
+            }
+        }
+        "Conjugate" => {
+            arity(head, args, 1)?;
+            match &args[0] {
+                Value::Cplx(c) => Ok(Value::Cplx(c.conj())),
+                other => value::to_float(other).map(|_| other.clone()),
+            }
+        }
+        "Arg" => {
+            arity(head, args, 1)?;
+            arg(&args[0])
         }
         "LatticeReduce" => lattice_reduce(head, args),
         "Numerator" => {
@@ -451,7 +482,14 @@ fn log(head: &str, args: &[Value]) -> EResult<Value> {
 fn sqrt(v: &Value) -> EResult<Value> {
     if let Value::Int(n) = v {
         if n.is_negative() {
-            return err("Sqrt of a negative number is not real (complex support is coming)");
+            // A negative perfect square is exactly imaginary: Sqrt[-4] = 2 I.
+            if let Some(k) = n.abs().sqrt_exact() {
+                return Ok(Value::Cplx(Complex::new(
+                    Rational::from_integer(Int::from(0)),
+                    Rational::from_integer(k),
+                )));
+            }
+            return err("Sqrt of a negative non-square needs inexact complex, not supported yet");
         }
         // A perfect square is exact; a non-square integer is kept exact *and*
         // symbolic (√n), with its decimal shown alongside.
@@ -467,9 +505,24 @@ fn sqrt(v: &Value) -> EResult<Value> {
     // A rational or real argument → an arbitrary-precision real approximation.
     let x = value::to_float(v)?;
     if x.is_sign_negative() {
-        return err("Sqrt of a negative number is not real (complex support is coming)");
+        return err("Sqrt of a negative number is not real (inexact complex not supported yet)");
     }
     value::real(x.sqrt(WORK_BITS, NEAR))
+}
+
+/// `Arg[z]` — the argument (phase) of a number, in radians.
+fn arg(v: &Value) -> EResult<Value> {
+    match v {
+        Value::Cplx(c) => {
+            let im = Float::from_rational(&c.im, WORK_BITS, NEAR);
+            let re = Float::from_rational(&c.re, WORK_BITS, NEAR);
+            value::real(im.atan2(&re, WORK_BITS, NEAR))
+        }
+        _ => {
+            let x = value::to_float(v)?;
+            value::real(Float::zero(WORK_BITS).atan2(&x, WORK_BITS, NEAR))
+        }
+    }
 }
 
 fn int_from(x: i32) -> Value {

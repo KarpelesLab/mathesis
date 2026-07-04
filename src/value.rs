@@ -11,7 +11,7 @@
 //!   any operation mixing an exact value with a real produces a real, exactly as
 //!   a hand calculation drops to decimals once an irrational enters.
 
-use puremp::{Float, Int, Rational, RoundingMode};
+use puremp::{Complex, Float, Int, Rational, RoundingMode};
 
 use crate::error::{EResult, EvalError, err};
 
@@ -37,6 +37,10 @@ pub enum Value {
     /// `Pi` → π, `Sqrt[2]` → √2 — carrying its numeric value for the decimal
     /// approximation and for when arithmetic must drop to the real path.
     Sym { text: String, tex: String, val: Float },
+    /// An exact complex number with rational parts (a Gaussian rational). The
+    /// imaginary part is guaranteed nonzero — a purely real value collapses back
+    /// to `Int`/`Ratio` (see [`from_complex`]).
+    Cplx(Complex<Rational>),
     Bool(bool),
     /// A display-only decimal string produced by `N[..]`; not fed back into
     /// arithmetic.
@@ -54,6 +58,66 @@ pub fn from_rational(r: Rational) -> Value {
         Some(n) => Value::Int(n),
         None => Value::Ratio(r),
     }
+}
+
+/// Collapse a complex number to a real one when its imaginary part vanishes.
+pub fn from_complex(c: Complex<Rational>) -> Value {
+    if c.is_real() {
+        from_rational(c.re)
+    } else {
+        Value::Cplx(c)
+    }
+}
+
+fn rat(n: i64) -> Rational {
+    Rational::from_integer(Int::from(n))
+}
+
+fn is_complex(v: &Value) -> bool {
+    matches!(v, Value::Cplx(_))
+}
+
+/// View any *exact* value as a complex number. Inexact operands (reals /
+/// symbolic irrationals) have no exact-complex form, so they error — Mathesis
+/// supports exact (Gaussian-rational) complex arithmetic only.
+fn complex_rat(v: &Value) -> EResult<Complex<Rational>> {
+    match v {
+        Value::Int(n) => Ok(Complex::from_real(Rational::from_integer(n.clone()))),
+        Value::Ratio(r) => Ok(Complex::from_real(r.clone())),
+        Value::Cplx(c) => Ok(c.clone()),
+        Value::Real(_) | Value::Sym { .. } => {
+            err("inexact complex arithmetic is not supported yet")
+        }
+        _ => err("expected a number"),
+    }
+}
+
+/// `base^e` for an exact complex base and integer exponent, by exponentiation
+/// by squaring (negative `e` inverts first).
+fn complex_pow(base: Complex<Rational>, e: i64) -> EResult<Value> {
+    if e == 0 {
+        return Ok(Value::Int(Int::from(1)));
+    }
+    let one = Complex::from_real(rat(1));
+    let (mut b, mut n) = if e < 0 {
+        if base.is_zero() {
+            return err("division by zero (0 raised to a negative power)");
+        }
+        (one.div(&base), e.unsigned_abs())
+    } else {
+        (base, e as u64)
+    };
+    let mut acc = Complex::from_real(rat(1));
+    while n > 0 {
+        if n & 1 == 1 {
+            acc = acc.mul(&b);
+        }
+        n >>= 1;
+        if n > 0 {
+            b = b.mul(&b);
+        }
+    }
+    Ok(from_complex(acc))
 }
 
 pub fn to_rational(v: &Value) -> EResult<Rational> {
@@ -121,7 +185,9 @@ pub fn real(f: Float) -> EResult<Value> {
 // the real path as soon as either operand is a [`Value::Real`].
 
 pub fn add(a: &Value, b: &Value) -> EResult<Value> {
-    if is_inexact(a) || is_inexact(b) {
+    if is_complex(a) || is_complex(b) {
+        Ok(from_complex(complex_rat(a)?.add(&complex_rat(b)?)))
+    } else if is_inexact(a) || is_inexact(b) {
         real(to_float(a)?.add(&to_float(b)?, WORK_BITS, NEAR))
     } else {
         Ok(from_rational(to_rational(a)?.add(&to_rational(b)?)))
@@ -129,7 +195,9 @@ pub fn add(a: &Value, b: &Value) -> EResult<Value> {
 }
 
 pub fn sub(a: &Value, b: &Value) -> EResult<Value> {
-    if is_inexact(a) || is_inexact(b) {
+    if is_complex(a) || is_complex(b) {
+        Ok(from_complex(complex_rat(a)?.sub(&complex_rat(b)?)))
+    } else if is_inexact(a) || is_inexact(b) {
         real(to_float(a)?.sub(&to_float(b)?, WORK_BITS, NEAR))
     } else {
         Ok(from_rational(to_rational(a)?.sub(&to_rational(b)?)))
@@ -137,7 +205,9 @@ pub fn sub(a: &Value, b: &Value) -> EResult<Value> {
 }
 
 pub fn mul(a: &Value, b: &Value) -> EResult<Value> {
-    if is_inexact(a) || is_inexact(b) {
+    if is_complex(a) || is_complex(b) {
+        Ok(from_complex(complex_rat(a)?.mul(&complex_rat(b)?)))
+    } else if is_inexact(a) || is_inexact(b) {
         real(to_float(a)?.mul(&to_float(b)?, WORK_BITS, NEAR))
     } else {
         Ok(from_rational(to_rational(a)?.mul(&to_rational(b)?)))
@@ -145,7 +215,13 @@ pub fn mul(a: &Value, b: &Value) -> EResult<Value> {
 }
 
 pub fn div(a: &Value, b: &Value) -> EResult<Value> {
-    if is_inexact(a) || is_inexact(b) {
+    if is_complex(a) || is_complex(b) {
+        let cb = complex_rat(b)?;
+        if cb.is_zero() {
+            return err("division by zero");
+        }
+        Ok(from_complex(complex_rat(a)?.div(&cb)))
+    } else if is_inexact(a) || is_inexact(b) {
         let fb = to_float(b)?;
         if fb.is_zero() {
             return err("division by zero");
@@ -161,7 +237,9 @@ pub fn div(a: &Value, b: &Value) -> EResult<Value> {
 }
 
 pub fn neg(a: &Value) -> EResult<Value> {
-    if is_inexact(a) {
+    if let Value::Cplx(c) = a {
+        Ok(from_complex(c.neg()))
+    } else if is_inexact(a) {
         Ok(Value::Real(to_float(a)?.neg()))
     } else {
         Ok(from_rational(to_rational(a)?.neg()))
@@ -177,6 +255,15 @@ pub fn abs(v: &Value) -> EResult<Value> {
 }
 
 pub fn pow(base: &Value, exp: &Value) -> EResult<Value> {
+    // Complex base (or exponent) — only integer exponents are supported.
+    if is_complex(base) || is_complex(exp) {
+        let cb = complex_rat(base)?;
+        let e = to_i64(&as_int(exp).map_err(|_| {
+            EvalError("a complex value can only be raised to an integer power".into())
+        })?)?;
+        return complex_pow(cb, e);
+    }
+
     // Exact fast path: an exact base raised to an *integer* exponent stays exact.
     if !is_inexact(base) && !is_inexact(exp) {
         if let Ok(n) = as_int(exp) {
@@ -217,6 +304,7 @@ impl Value {
             Value::Ratio(r) => format!("{}/{}", r.numerator(), r.denominator()),
             Value::Real(f) => real_string(f),
             Value::Sym { text, .. } => text.clone(),
+            Value::Cplx(c) => complex_render(c, false),
             Value::Bool(b) => if *b { "True" } else { "False" }.to_string(),
             Value::Decimal(s) => s.clone(),
             Value::List(xs) => {
@@ -258,6 +346,7 @@ impl Value {
             }
             Value::Real(f) => real_string(f),
             Value::Sym { tex, .. } => tex.clone(),
+            Value::Cplx(c) => complex_render(c, true),
             Value::Bool(b) => format!("\\text{{{}}}", if *b { "True" } else { "False" }),
             Value::Decimal(s) => s.clone(),
             Value::List(xs) => match matrix_tex(xs) {
@@ -305,6 +394,32 @@ impl Value {
             _ => None,
         }
     }
+}
+
+/// Render a complex number `a + b i`, omitting a zero real part and a unit
+/// coefficient, choosing `i` (TeX) or `I` (plain, re-typable) for the unit.
+fn complex_render(c: &Complex<Rational>, tex: bool) -> String {
+    let unit = if tex { "i" } else { "I" };
+    let num = |r: &Rational| {
+        let v = from_rational(r.clone());
+        if tex { v.to_tex() } else { v.to_text() }
+    };
+    let neg_im = c.im.is_negative();
+    let im_abs = if neg_im { c.im.neg() } else { c.im.clone() };
+
+    let mut s = String::new();
+    if !c.re.is_zero() {
+        s.push_str(&num(&c.re));
+        s.push_str(if neg_im { " - " } else { " + " });
+    } else if neg_im {
+        s.push('-');
+    }
+    if !im_abs.is_one() {
+        s.push_str(&num(&im_abs));
+        s.push_str(if tex { "\\," } else { " " });
+    }
+    s.push_str(unit);
+    s
 }
 
 /// If `rows` is a rectangular list-of-lists of scalars, render it as a KaTeX
