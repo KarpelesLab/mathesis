@@ -169,6 +169,20 @@ mod tests {
     }
 
     #[test]
+    fn matrix_rendering() {
+        // A rectangular list-of-lists renders as a bracketed matrix…
+        assert!(out("{{1, 2}, {3, 4}}").contains("bmatrix"), "{}", out("{{1, 2}, {3, 4}}"));
+        assert!(
+            out("LatticeReduce[{{1, 1, 1}, {-1, 0, 2}, {3, 5, 6}}]").contains("bmatrix"),
+            "lattice result should render as a matrix"
+        );
+        // …but a plain vector stays a list, and a ragged one is not a matrix.
+        let v = out("{1, 2, 3}");
+        assert!(!v.contains("bmatrix") && v.contains("left"), "{v}");
+        assert!(!out("{{1, 2}, {3}}").contains("bmatrix"));
+    }
+
+    #[test]
     fn errors_are_reported() {
         assert!(out("1/0").contains("\"ok\":false"));
         assert!(out("Foo[1]").contains("unknown function"));

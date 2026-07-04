@@ -260,10 +260,15 @@ impl Value {
             Value::Sym { tex, .. } => tex.clone(),
             Value::Bool(b) => format!("\\text{{{}}}", if *b { "True" } else { "False" }),
             Value::Decimal(s) => s.clone(),
-            Value::List(xs) => {
-                let inner: Vec<String> = xs.iter().map(Value::to_tex).collect();
-                format!("\\left\\{{{}\\right\\}}", inner.join(",\\ "))
-            }
+            Value::List(xs) => match matrix_tex(xs) {
+                // A rectangular list-of-lists renders as a bracketed matrix.
+                Some(m) => m,
+                // Everything else stays a list.
+                None => {
+                    let inner: Vec<String> = xs.iter().map(Value::to_tex).collect();
+                    format!("\\left\\{{{}\\right\\}}", inner.join(",\\ "))
+                }
+            },
             Value::Factored { negative, factors } => {
                 let mut parts: Vec<String> = Vec::new();
                 if *negative {
@@ -300,6 +305,44 @@ impl Value {
             _ => None,
         }
     }
+}
+
+/// If `rows` is a rectangular list-of-lists of scalars, render it as a KaTeX
+/// `bmatrix`; otherwise return `None` so it falls back to plain list braces.
+/// (Plain vectors like `{1, 2, 3}` are lists, not matrices, and stay lists.)
+fn matrix_tex(rows: &[Value]) -> Option<String> {
+    if rows.is_empty() {
+        return None;
+    }
+    let mut width: Option<usize> = None;
+    for row in rows {
+        let cells = match row {
+            Value::List(cells) => cells,
+            _ => return None, // not a list-of-lists
+        };
+        // Matrix cells must be scalars — bail on deeper nesting.
+        if cells.iter().any(|c| matches!(c, Value::List(_))) {
+            return None;
+        }
+        match width {
+            None => width = Some(cells.len()),
+            Some(w) if w == cells.len() => {}
+            Some(_) => return None, // ragged
+        }
+    }
+    if width == Some(0) {
+        return None; // rows present but empty
+    }
+
+    let body = rows
+        .iter()
+        .map(|row| match row {
+            Value::List(cells) => cells.iter().map(Value::to_tex).collect::<Vec<_>>().join(" & "),
+            _ => String::new(),
+        })
+        .collect::<Vec<_>>()
+        .join(" \\\\ ");
+    Some(format!("\\begin{{bmatrix}} {body} \\end{{bmatrix}}"))
 }
 
 /// Default rendering of a real: rounded to ~16 significant digits — the familiar
