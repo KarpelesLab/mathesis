@@ -10,6 +10,11 @@ WebAssembly, and wrapped in a Vue 3 notebook UI.
 > Live at **https://karpeleslab.github.io/mathesis/** (deployed from `master` via
 > GitHub Actions).
 
+The interface is available in **English, French, and Japanese** (switch from the
+header; it follows your browser by default), and a built-in **Docs** panel
+documents every function with syntax and runnable examples in all three
+languages. Engine error messages are currently English only.
+
 ## The name
 
 *Mathesis* (μάθησις) derives from the ancient Greek word for "learning" or "that

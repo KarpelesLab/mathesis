@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { nextTick, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Editor from './components/Editor.vue'
 import MathOutput from './components/MathOutput.vue'
+import DocsPanel from './components/DocsPanel.vue'
+import LangSwitch from './components/LangSwitch.vue'
 import {
   cancelCurrent,
   CancelledError,
@@ -26,10 +29,13 @@ interface Entry {
   pending: boolean
 }
 
+const { t } = useI18n({ useScope: 'global' })
+
 const entries = ref<Entry[]>([])
 const counter = ref(0)
 const version = ref('')
 const busy = ref(false)
+const showDocs = ref(false)
 const editor = ref<InstanceType<typeof Editor> | null>(null)
 const scroller = ref<HTMLElement | null>(null)
 const toast = ref('')
@@ -139,17 +145,21 @@ function reuse(input: string) {
 }
 
 function flash(outcome: ShareOutcome) {
-  const message: Record<ShareOutcome, string> = {
-    shared: 'Shared',
-    copied: 'Link copied to clipboard',
+  const key: Record<ShareOutcome, string> = {
+    shared: 'toast.shared',
+    copied: 'toast.copied',
     cancelled: '',
-    failed: "Couldn't share — copy the address bar instead",
+    failed: 'toast.failed',
   }
-  const text = message[outcome]
-  if (!text) return
-  toast.value = text
+  if (!key[outcome]) return
+  toast.value = t(key[outcome])
   clearTimeout(toastTimer)
   toastTimer = setTimeout(() => (toast.value = ''), 2400)
+}
+
+function insertExample(ex: string) {
+  editor.value?.setText(ex)
+  showDocs.value = false
 }
 
 async function shareCell(entry: Entry) {
@@ -168,15 +178,16 @@ async function shareNotebook() {
 <template>
   <div class="app">
     <header class="topbar">
-      <a class="brand" href="./" title="Mathesis — start a fresh sheet">
+      <a class="brand" href="./" :title="t('nav.home')">
         <span class="mark">∴</span>
         <span class="wordmark">Mathesis</span>
       </a>
       <div class="actions">
+        <button class="repo docs-btn" @click="showDocs = true">{{ t('nav.docs') }}</button>
         <button
           class="share-nb"
           :disabled="entries.length === 0"
-          title="Share this notebook as a link"
+          :title="t('nav.share')"
           @click="shareNotebook"
         >
           <svg viewBox="0 0 24 24" class="ico" aria-hidden="true">
@@ -184,21 +195,22 @@ async function shareNotebook() {
               d="M18 8a3 3 0 1 0-2.83-4H15a3 3 0 0 0 .12 3.36L8.9 10.7a3 3 0 1 0 0 2.6l6.22 3.34A3 3 0 1 0 18 16a3 3 0 0 0-1.9.68L9.88 13.3a3 3 0 0 0 0-2.6l6.22-3.38A3 3 0 0 0 18 8Z"
             />
           </svg>
-          Share
+          {{ t('nav.share') }}
         </button>
+        <LangSwitch />
         <a class="repo" href="https://github.com/KarpelesLab/mathesis" target="_blank" rel="noopener">
-          source ↗
+          {{ t('nav.source') }} ↗
         </a>
       </div>
     </header>
 
     <main ref="scroller" class="scroll">
       <section v-if="entries.length === 0" class="hero">
-        <p class="eyebrow">exact by construction</p>
+        <p class="eyebrow">{{ t('hero.eyebrow') }}</p>
         <div class="hero-demo">
           <div class="hero-expr">2<sup>128</sup></div>
           <p class="hero-approx">
-            <span class="approx-label">a calculator rounds to</span>3.4028 × 10³⁸
+            <span class="approx-label">{{ t('hero.approx') }}</span>3.4028 × 10³⁸
           </p>
           <p class="hero-exact">
             <span class="tf">∴</span>
@@ -206,8 +218,9 @@ async function shareNotebook() {
           </p>
         </div>
         <p class="hero-cap">
-          Every digit, exactly — no rounding, no server. Type an expression and press
-          <kbd>Enter</kbd>.
+          <i18n-t keypath="hero.caption">
+            <template #enter><kbd>Enter</kbd></template>
+          </i18n-t>
         </p>
         <div class="examples">
           <button v-for="ex in examples" :key="ex" class="chip" @click="useExample(ex)">
@@ -240,8 +253,8 @@ async function shareNotebook() {
             <div class="result">
               <span v-if="entry.pending" class="pending">
                 <span class="dots" aria-label="computing"><i></i><i></i><i></i></span>
-                <button class="stop-inline" title="Stop this computation" @click="stop">
-                  stop
+                <button class="stop-inline" :title="t('composer.stop')" @click="stop">
+                  {{ t('composer.stop') }}
                 </button>
               </span>
               <template v-else-if="entry.result">
@@ -270,6 +283,7 @@ async function shareNotebook() {
         <span class="gutter tf live" :title="'In[' + (counter + 1) + ']'">∴</span>
         <Editor
           ref="editor"
+          :placeholder="t('composer.placeholder')"
           @submit="run"
           @history="browseHistory"
         />
@@ -281,6 +295,10 @@ async function shareNotebook() {
       <div v-if="toast" class="toast">{{ toast }}</div>
     </transition>
 
-    <div class="version" v-if="version">engine v{{ version }}</div>
+    <transition name="docs">
+      <DocsPanel v-if="showDocs" @close="showDocs = false" @insert="insertExample" />
+    </transition>
+
+    <div class="version" v-if="version">{{ t('version') }} v{{ version }}</div>
   </div>
 </template>

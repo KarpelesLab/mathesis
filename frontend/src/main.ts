@@ -13,5 +13,7 @@ import '@fontsource/ibm-plex-mono/500.css'
 import 'katex/dist/katex.min.css'
 import './style.css'
 import App from './App.vue'
+import { i18n, initialLang } from './i18n'
 
-createApp(App).mount('#app')
+document.documentElement.lang = initialLang()
+createApp(App).use(i18n).mount('#app')

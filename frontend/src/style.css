@@ -102,7 +102,9 @@ body {
 .actions {
   display: flex;
   align-items: center;
-  gap: 0.65rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
 }
 
 .repo {
@@ -117,6 +119,53 @@ body {
 .repo:hover {
   color: var(--chalk);
   background: var(--slate-raised);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* language switcher */
+.lang {
+  display: inline-flex;
+}
+.lang select {
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  color: var(--dust);
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: 7px;
+  padding: 0.35rem 0.5rem;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.lang select:hover {
+  color: var(--chalk);
+  border-color: var(--amber);
+}
+.lang select option {
+  background: var(--slate-raised);
+  color: var(--chalk);
+}
+
+.docs-btn {
+  border: 1px solid var(--rule);
+  background: transparent;
+  cursor: pointer;
+}
+.docs-btn:hover {
+  color: var(--chalk);
+  border-color: var(--amber);
+  background: transparent;
 }
 
 .share-nb {
@@ -598,6 +647,180 @@ kbd {
   .katex {
     font-size: 1.28em;
   }
+}
+
+/* ---- documentation panel ------------------------------------------------- */
+.docs-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(6, 10, 8, 0.55);
+  display: flex;
+  justify-content: flex-end;
+}
+.docs {
+  width: min(600px, 100%);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-2, #0e1710);
+  background-color: var(--slate-raised);
+  border-left: 1px solid var(--rule);
+  box-shadow: -20px 0 60px rgba(0, 0, 0, 0.5);
+}
+.docs-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.15rem 1.3rem 0.9rem;
+  border-bottom: 1px solid var(--rule);
+}
+.docs-head h2 {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-weight: 600;
+  font-size: 1.3rem;
+  color: var(--chalk);
+}
+.docs-head .tf {
+  color: var(--amber);
+}
+.docs-close {
+  font-size: 1rem;
+  color: var(--dust);
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  width: 2rem;
+  height: 2rem;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.docs-close:hover {
+  color: var(--chalk);
+  border-color: var(--amber);
+}
+.docs-search {
+  padding: 0.9rem 1.3rem;
+  border-bottom: 1px solid var(--rule-soft);
+}
+.docs-search input {
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  color: var(--chalk);
+  background: var(--slate);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 0.55rem 0.7rem;
+}
+.docs-search input:focus {
+  outline: none;
+  border-color: var(--amber);
+  box-shadow: 0 0 0 3px var(--amber-soft);
+}
+.docs-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.5rem 1.3rem 2rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--rule) transparent;
+}
+
+.guide {
+  padding: 0.6rem 0 0.4rem;
+  border-bottom: 1px solid var(--rule-soft);
+  margin-bottom: 0.6rem;
+}
+.guide > h3,
+.docs-cat > h3 {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin: 1.3rem 0 0.8rem;
+}
+.guide-item {
+  margin-bottom: 0.9rem;
+}
+.guide-item h4 {
+  margin: 0 0 0.25rem;
+  font-family: var(--font-serif);
+  font-size: 1.02rem;
+  color: var(--chalk);
+}
+.guide-item p {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--chalk-dim);
+}
+
+.fn {
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--rule-soft);
+}
+.fn:first-of-type {
+  border-top: none;
+}
+.fn-syntax {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.92rem;
+  color: var(--chalk);
+}
+.fn-desc {
+  margin: 0.3rem 0 0.5rem;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--chalk-dim);
+}
+.fn-ex {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.fn-chip {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--dust);
+  background: var(--slate);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 0.3rem 0.5rem;
+  cursor: pointer;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+}
+.fn-chip:hover {
+  color: var(--amber);
+  border-color: var(--amber);
+}
+.docs-empty {
+  color: var(--muted, var(--dust));
+  font-size: 0.9rem;
+  padding: 1rem 0;
+}
+
+.docs-enter-active,
+.docs-leave-active {
+  transition: opacity 0.2s ease;
+}
+.docs-enter-active .docs,
+.docs-leave-active .docs {
+  transition: transform 0.22s ease;
+}
+.docs-enter-from,
+.docs-leave-to {
+  opacity: 0;
+}
+.docs-enter-from .docs,
+.docs-leave-to .docs {
+  transform: translateX(100%);
 }
 
 @media (prefers-reduced-motion: reduce) {

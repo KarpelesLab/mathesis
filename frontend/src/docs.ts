@@ -1,0 +1,152 @@
+// The documentation catalogue: every builtin, grouped by category, with syntax,
+// runnable examples, and a one-line description per language. Descriptions are
+// data (keyed by the same language codes as i18n.ts).
+import type { Lang } from './i18n'
+
+export interface FnDoc {
+  name: string
+  syntax: string
+  examples: string[]
+  desc: Record<Lang, string>
+}
+export interface Category {
+  id: string
+  title: Record<Lang, string>
+  fns: FnDoc[]
+}
+
+const t = (en: string, fr: string, ja: string): Record<Lang, string> => ({ en, fr, ja })
+
+export const CATEGORIES: Category[] = [
+  {
+    id: 'constants',
+    title: t('Constants', 'Constantes', '定数'),
+    fns: [
+      { name: 'Pi', syntax: 'Pi', examples: ['Pi', 'N[Pi, 50]'], desc: t('The constant π ≈ 3.14159.', 'La constante π ≈ 3,14159.', '円周率 π ≈ 3.14159。') },
+      { name: 'E', syntax: 'E', examples: ['E', 'N[E, 40]'], desc: t("Euler's number e ≈ 2.71828.", "Le nombre d'Euler e ≈ 2,71828.", '自然対数の底 e ≈ 2.71828。') },
+      { name: 'EulerGamma', syntax: 'EulerGamma', examples: ['N[EulerGamma, 30]'], desc: t('The Euler–Mascheroni constant γ ≈ 0.57722.', "La constante d'Euler–Mascheroni γ ≈ 0,57722.", 'オイラー・マスケローニ定数 γ ≈ 0.57722。') },
+      { name: 'Catalan', syntax: 'Catalan', examples: ['N[Catalan, 30]'], desc: t("Catalan's constant ≈ 0.91597.", 'La constante de Catalan ≈ 0,91597.', 'カタラン定数 ≈ 0.91597。') },
+      { name: 'I', syntax: 'I', examples: ['I', 'I^2', '(1 + I)^2'], desc: t('The imaginary unit, I² = −1.', "L'unité imaginaire, I² = −1.", '虚数単位。I² = −1。') },
+    ],
+  },
+  {
+    id: 'arithmetic',
+    title: t('Arithmetic & rounding', 'Arithmétique et arrondis', '算術・丸め'),
+    fns: [
+      { name: 'Power', syntax: 'Power[a, b]  ·  a^b', examples: ['2^128', 'Power[3, 4]'], desc: t('a raised to the power b.', 'a élevé à la puissance b.', 'a の b 乗。') },
+      { name: 'Sqrt', syntax: 'Sqrt[x]', examples: ['Sqrt[16]', 'Sqrt[2]', 'Sqrt[-4]'], desc: t('Square root — exact for perfect squares, symbolic (√n) or complex otherwise.', 'Racine carrée — exacte pour les carrés parfaits, symbolique (√n) ou complexe sinon.', '平方根。完全平方は厳密、その他は記号（√n）または複素数。') },
+      { name: 'Abs', syntax: 'Abs[x]', examples: ['Abs[-5]', 'Abs[3 + 4*I]'], desc: t('Absolute value, or the modulus of a complex number.', "Valeur absolue, ou module d'un nombre complexe.", '絶対値、または複素数の大きさ。') },
+      { name: 'Sign', syntax: 'Sign[x]', examples: ['Sign[-3]', 'Sign[0]'], desc: t('The sign: −1, 0, or 1.', 'Le signe : −1, 0 ou 1.', '符号（−1, 0, 1）。') },
+      { name: 'N', syntax: 'N[x]  ·  N[x, d]', examples: ['N[Pi, 50]', 'N[1/7, 20]'], desc: t('Decimal approximation, with d digits if given.', 'Approximation décimale, avec d chiffres le cas échéant.', '小数近似。d を指定すると d 桁。') },
+      { name: 'Floor', syntax: 'Floor[x]', examples: ['Floor[7/2]', 'Floor[Pi]'], desc: t('Greatest integer ≤ x.', 'Plus grand entier ≤ x.', 'x 以下で最大の整数（床関数）。') },
+      { name: 'Ceiling', syntax: 'Ceiling[x]', examples: ['Ceiling[7/2]'], desc: t('Least integer ≥ x.', 'Plus petit entier ≥ x.', 'x 以上で最小の整数（天井関数）。') },
+      { name: 'Round', syntax: 'Round[x]', examples: ['Round[7/2]', 'Round[Pi]'], desc: t('Nearest integer.', 'Entier le plus proche.', '最も近い整数（四捨五入）。') },
+      { name: 'IntegerPart', syntax: 'IntegerPart[x]', examples: ['IntegerPart[7/2]'], desc: t('Integer part (truncation toward zero).', 'Partie entière (troncature vers zéro).', '整数部分（ゼロ方向へ切り捨て）。') },
+      { name: 'FractionalPart', syntax: 'FractionalPart[x]', examples: ['FractionalPart[7/2]'], desc: t('Fractional part, x − IntegerPart[x].', 'Partie fractionnaire, x − IntegerPart[x].', '小数部分（x − IntegerPart[x]）。') },
+    ],
+  },
+  {
+    id: 'numbertheory',
+    title: t('Number theory', 'Théorie des nombres', '整数論'),
+    fns: [
+      { name: 'Factor', syntax: 'Factor[n]', examples: ['Factor[360]'], desc: t('Prime factorization.', 'Décomposition en facteurs premiers.', '素因数分解。') },
+      { name: 'Divisors', syntax: 'Divisors[n]', examples: ['Divisors[12]'], desc: t('All positive divisors.', 'Tous les diviseurs positifs.', '正の約数の一覧。') },
+      { name: 'DivisorSigma', syntax: 'DivisorSigma[k, n]', examples: ['DivisorSigma[1, 12]', 'DivisorSigma[0, 12]'], desc: t('Sum of the k-th powers of the divisors (k = 0 counts them).', 'Somme des puissances k-ièmes des diviseurs (k = 0 les compte).', '約数の k 乗の和（k = 0 は約数の個数）。') },
+      { name: 'EulerPhi', syntax: 'EulerPhi[n]', examples: ['EulerPhi[36]'], desc: t("Euler's totient: integers ≤ n coprime to n.", "Indicatrice d'Euler : entiers ≤ n premiers avec n.", 'オイラーのトーシェント関数：n 以下で n と互いに素な数の個数。') },
+      { name: 'MoebiusMu', syntax: 'MoebiusMu[n]', examples: ['MoebiusMu[30]', 'MoebiusMu[4]'], desc: t('The Möbius function μ(n).', 'La fonction de Möbius μ(n).', 'メビウス関数 μ(n)。') },
+      { name: 'Radical', syntax: 'Radical[n]', examples: ['Radical[360]'], desc: t('Product of the distinct prime factors.', 'Produit des facteurs premiers distincts.', '相異なる素因数の積（根基）。') },
+      { name: 'GCD', syntax: 'GCD[a, b, …]', examples: ['GCD[462, 1071]'], desc: t('Greatest common divisor.', 'Plus grand commun diviseur (PGCD).', '最大公約数。') },
+      { name: 'LCM', syntax: 'LCM[a, b, …]', examples: ['LCM[4, 6, 9]'], desc: t('Least common multiple.', 'Plus petit commun multiple (PPCM).', '最小公倍数。') },
+      { name: 'PrimeQ', syntax: 'PrimeQ[n]', examples: ['PrimeQ[97]', 'PrimeQ[2^61 - 1]'], desc: t('True if n is prime.', 'Vrai si n est premier.', 'n が素数なら True。') },
+      { name: 'NextPrime', syntax: 'NextPrime[n]', examples: ['NextPrime[100]'], desc: t('Smallest prime greater than n.', 'Plus petit premier supérieur à n.', 'n より大きい最小の素数。') },
+      { name: 'PreviousPrime', syntax: 'PreviousPrime[n]', examples: ['PreviousPrime[100]'], desc: t('Largest prime less than n.', 'Plus grand premier inférieur à n.', 'n より小さい最大の素数。') },
+      { name: 'Factorial', syntax: 'Factorial[n]  ·  n!', examples: ['20!', 'Factorial[10]'], desc: t('n! = 1·2···n.', 'n! = 1·2···n.', '階乗 n! = 1·2···n。') },
+      { name: 'Binomial', syntax: 'Binomial[n, k]', examples: ['Binomial[49, 6]'], desc: t('Binomial coefficient C(n, k).', 'Coefficient binomial C(n, k).', '二項係数 C(n, k)。') },
+      { name: 'Multinomial', syntax: 'Multinomial[k1, k2, …]', examples: ['Multinomial[1, 2, 3]'], desc: t('Multinomial coefficient.', 'Coefficient multinomial.', '多項係数。') },
+      { name: 'Fibonacci', syntax: 'Fibonacci[n]', examples: ['Fibonacci[100]'], desc: t('The n-th Fibonacci number.', 'Le n-ième nombre de Fibonacci.', 'n 番目のフィボナッチ数。') },
+      { name: 'LucasL', syntax: 'LucasL[n]', examples: ['LucasL[20]'], desc: t('The n-th Lucas number.', 'Le n-ième nombre de Lucas.', 'n 番目のリュカ数。') },
+      { name: 'Mod', syntax: 'Mod[a, m]', examples: ['Mod[17, 5]', 'Mod[-3, 5]'], desc: t('Remainder of a modulo m (non-negative).', 'Reste de a modulo m (positif).', 'a を m で割った剰余（非負）。') },
+      { name: 'Quotient', syntax: 'Quotient[a, b]', examples: ['Quotient[17, 5]'], desc: t('Integer quotient (floored division).', 'Quotient entier (division par défaut).', '整数商（床除算）。') },
+      { name: 'PowerMod', syntax: 'PowerMod[a, b, m]', examples: ['PowerMod[7, 100, 13]', 'PowerMod[3, -1, 7]'], desc: t('a^b mod m; a negative b uses the modular inverse.', "a^b mod m ; un b négatif utilise l'inverse modulaire.", 'a^b mod m。b が負なら逆元を用いる。') },
+      { name: 'ModularInverse', syntax: 'ModularInverse[a, m]', examples: ['ModularInverse[3, 7]'], desc: t('Inverse of a modulo m.', 'Inverse de a modulo m.', 'a の m を法とする逆元。') },
+      { name: 'ExtendedGCD', syntax: 'ExtendedGCD[a, b]', examples: ['ExtendedGCD[12, 18]'], desc: t('{g, {s, t}} with g = gcd = s·a + t·b.', '{g, {s, t}} avec g = pgcd = s·a + t·b.', '{g, {s, t}}（g = 最大公約数 = s·a + t·b）。') },
+      { name: 'JacobiSymbol', syntax: 'JacobiSymbol[a, n]', examples: ['JacobiSymbol[2, 15]'], desc: t('The Jacobi symbol (a/n).', 'Le symbole de Jacobi (a/n).', 'ヤコビ記号 (a/n)。') },
+      { name: 'ChineseRemainder', syntax: 'ChineseRemainder[{r…}, {m…}]', examples: ['ChineseRemainder[{2, 3}, {3, 5}]'], desc: t('Smallest x with x ≡ rᵢ (mod mᵢ).', 'Plus petit x tel que x ≡ rᵢ (mod mᵢ).', 'x ≡ rᵢ (mod mᵢ) を満たす最小の x。') },
+      { name: 'SqrtMod', syntax: 'SqrtMod[a, p]', examples: ['SqrtMod[2, 7]'], desc: t('A square root of a modulo p.', 'Une racine carrée de a modulo p.', 'a の p を法とする平方根。') },
+      { name: 'DiscreteLog', syntax: 'DiscreteLog[b, t, m]', examples: ['DiscreteLog[3, 4, 7]'], desc: t('Least x with b^x ≡ t (mod m).', 'Plus petit x tel que b^x ≡ t (mod m).', 'b^x ≡ t (mod m) を満たす最小の x。') },
+      { name: 'EvenQ', syntax: 'EvenQ[n]', examples: ['EvenQ[4]'], desc: t('True if n is even.', 'Vrai si n est pair.', 'n が偶数なら True。') },
+      { name: 'OddQ', syntax: 'OddQ[n]', examples: ['OddQ[7]'], desc: t('True if n is odd.', 'Vrai si n est impair.', 'n が奇数なら True。') },
+      { name: 'IntegerQ', syntax: 'IntegerQ[x]', examples: ['IntegerQ[4]', 'IntegerQ[1/2]'], desc: t('True if x is an integer.', 'Vrai si x est un entier.', 'x が整数なら True。') },
+    ],
+  },
+  {
+    id: 'rationals',
+    title: t('Rationals', 'Rationnels', '有理数'),
+    fns: [
+      { name: 'Numerator', syntax: 'Numerator[x]', examples: ['Numerator[6/10]'], desc: t('Numerator in lowest terms.', 'Numérateur (forme réduite).', '既約分数の分子。') },
+      { name: 'Denominator', syntax: 'Denominator[x]', examples: ['Denominator[6/10]'], desc: t('Denominator in lowest terms.', 'Dénominateur (forme réduite).', '既約分数の分母。') },
+      { name: 'ContinuedFraction', syntax: 'ContinuedFraction[x]', examples: ['ContinuedFraction[7/3]'], desc: t('Continued-fraction terms of a rational.', "Termes de la fraction continue d'un rationnel.", '有理数の連分数展開の各項。') },
+      { name: 'FromContinuedFraction', syntax: 'FromContinuedFraction[{…}]', examples: ['FromContinuedFraction[{2, 3}]'], desc: t('Rebuild a rational from its terms.', 'Reconstruit un rationnel à partir de ses termes.', '各項から有理数を復元。') },
+      { name: 'Rationalize', syntax: 'Rationalize[x, d]', examples: ['Rationalize[314/100, 10]'], desc: t('Best rational with denominator ≤ d.', 'Meilleur rationnel de dénominateur ≤ d.', '分母が d 以下の最良の有理数近似。') },
+    ],
+  },
+  {
+    id: 'elementary',
+    title: t('Elementary & special functions', 'Fonctions élémentaires et spéciales', '初等・特殊関数'),
+    fns: [
+      { name: 'Exp', syntax: 'Exp[x]', examples: ['Exp[1]', 'Exp[I*Pi]'], desc: t('Exponential eˣ (accepts complex).', 'Exponentielle eˣ (accepte les complexes).', '指数関数 eˣ（複素数対応）。') },
+      { name: 'Log', syntax: 'Log[x]  ·  Log[b, x]', examples: ['Log[E]', 'Log[2, 8]', 'Log[-1]'], desc: t('Natural log, or base-b log; complex for negative x.', 'Logarithme naturel, ou en base b ; complexe pour x négatif.', '自然対数、または底 b の対数。x が負なら複素数。') },
+      { name: 'Log2', syntax: 'Log2[x]', examples: ['Log2[8]'], desc: t('Base-2 logarithm.', 'Logarithme en base 2.', '底 2 の対数。') },
+      { name: 'Log10', syntax: 'Log10[x]', examples: ['Log10[1000]'], desc: t('Base-10 logarithm.', 'Logarithme décimal (base 10).', '常用対数（底 10）。') },
+      { name: 'Sin', syntax: 'Sin[x]', examples: ['Sin[Pi/4]', 'N[Sin[1], 20]'], desc: t('Sine (radians; accepts complex).', 'Sinus (radians ; accepte les complexes).', '正弦（ラジアン、複素数対応）。') },
+      { name: 'Cos', syntax: 'Cos[x]', examples: ['Cos[Pi/3]'], desc: t('Cosine (radians; accepts complex).', 'Cosinus (radians ; accepte les complexes).', '余弦（ラジアン、複素数対応）。') },
+      { name: 'Tan', syntax: 'Tan[x]', examples: ['Tan[Pi/4]'], desc: t('Tangent (radians).', 'Tangente (radians).', '正接（ラジアン）。') },
+      { name: 'ArcSin', syntax: 'ArcSin[x]', examples: ['ArcSin[1]'], desc: t('Inverse sine.', 'Arc sinus.', '逆正弦。') },
+      { name: 'ArcCos', syntax: 'ArcCos[x]', examples: ['ArcCos[0]'], desc: t('Inverse cosine.', 'Arc cosinus.', '逆余弦。') },
+      { name: 'ArcTan', syntax: 'ArcTan[x]  ·  ArcTan[x, y]', examples: ['ArcTan[1]', 'ArcTan[1, 1]'], desc: t('Inverse tangent; the two-argument form is atan2(y, x).', 'Arc tangente ; la forme à deux arguments est atan2(y, x).', '逆正接。2 引数形は atan2(y, x)。') },
+      { name: 'Sinh', syntax: 'Sinh[x]', examples: ['Sinh[1]'], desc: t('Hyperbolic sine.', 'Sinus hyperbolique.', '双曲線正弦。') },
+      { name: 'Cosh', syntax: 'Cosh[x]', examples: ['Cosh[0]'], desc: t('Hyperbolic cosine.', 'Cosinus hyperbolique.', '双曲線余弦。') },
+      { name: 'Tanh', syntax: 'Tanh[x]', examples: ['Tanh[1]'], desc: t('Hyperbolic tangent.', 'Tangente hyperbolique.', '双曲線正接。') },
+      { name: 'ArcSinh', syntax: 'ArcSinh[x]', examples: ['ArcSinh[1]'], desc: t('Inverse hyperbolic sine.', 'Argument sinus hyperbolique.', '逆双曲線正弦。') },
+      { name: 'ArcCosh', syntax: 'ArcCosh[x]', examples: ['ArcCosh[2]'], desc: t('Inverse hyperbolic cosine.', 'Argument cosinus hyperbolique.', '逆双曲線余弦。') },
+      { name: 'ArcTanh', syntax: 'ArcTanh[x]', examples: ['ArcTanh[1/2]'], desc: t('Inverse hyperbolic tangent.', 'Argument tangente hyperbolique.', '逆双曲線正接。') },
+      { name: 'Erf', syntax: 'Erf[x]', examples: ['Erf[1]'], desc: t('The error function.', "La fonction d'erreur.", '誤差関数。') },
+      { name: 'Erfc', syntax: 'Erfc[x]', examples: ['Erfc[1]'], desc: t('The complementary error function, 1 − Erf[x].', "La fonction d'erreur complémentaire, 1 − Erf[x].", '相補誤差関数（1 − Erf[x]）。') },
+      { name: 'Zeta', syntax: 'Zeta[s]', examples: ['Zeta[2]', 'Zeta[4]'], desc: t('The Riemann zeta function.', 'La fonction zêta de Riemann.', 'リーマンゼータ関数。') },
+    ],
+  },
+  {
+    id: 'complex',
+    title: t('Complex', 'Nombres complexes', '複素数'),
+    fns: [
+      { name: 'Re', syntax: 'Re[z]', examples: ['Re[3 + 4*I]'], desc: t('Real part.', 'Partie réelle.', '実部。') },
+      { name: 'Im', syntax: 'Im[z]', examples: ['Im[3 + 4*I]'], desc: t('Imaginary part.', 'Partie imaginaire.', '虚部。') },
+      { name: 'Conjugate', syntax: 'Conjugate[z]', examples: ['Conjugate[3 + 4*I]'], desc: t('Complex conjugate.', 'Conjugué complexe.', '複素共役。') },
+      { name: 'Arg', syntax: 'Arg[z]', examples: ['Arg[I]', 'Arg[-1]'], desc: t('Argument (phase) in radians.', 'Argument (phase) en radians.', '偏角（ラジアン）。') },
+    ],
+  },
+  {
+    id: 'linearalgebra',
+    title: t('Linear algebra', 'Algèbre linéaire', '線形代数'),
+    fns: [
+      { name: 'Det', syntax: 'Det[m]', examples: ['Det[{{1, 2}, {3, 4}}]'], desc: t('Determinant of a square matrix.', "Déterminant d'une matrice carrée.", '正方行列の行列式。') },
+      { name: 'Inverse', syntax: 'Inverse[m]', examples: ['Inverse[{{1, 2}, {3, 4}}]'], desc: t('Matrix inverse.', "Inverse d'une matrice.", '逆行列。') },
+      { name: 'Transpose', syntax: 'Transpose[m]', examples: ['Transpose[{{1, 2}, {3, 4}}]'], desc: t('Matrix transpose.', "Transposée d'une matrice.", '転置行列。') },
+      { name: 'Dot', syntax: 'Dot[a, b]', examples: ['Dot[{{1, 2}, {3, 4}}, {{0, 1}, {1, 0}}]'], desc: t('Matrix product.', 'Produit matriciel.', '行列の積。') },
+      { name: 'MatrixRank', syntax: 'MatrixRank[m]', examples: ['MatrixRank[{{1, 2}, {2, 4}}]'], desc: t('Rank of a matrix.', "Rang d'une matrice.", '行列の階数（ランク）。') },
+      { name: 'LinearSolve', syntax: 'LinearSolve[m, b]', examples: ['LinearSolve[{{1, 1}, {1, -1}}, {3, 1}]'], desc: t('Solve the linear system m·x = b.', 'Résout le système linéaire m·x = b.', '連立一次方程式 m·x = b を解く。') },
+      { name: 'IdentityMatrix', syntax: 'IdentityMatrix[n]', examples: ['IdentityMatrix[3]'], desc: t('The n×n identity matrix.', 'La matrice identité n×n.', 'n×n の単位行列。') },
+      { name: 'LatticeReduce', syntax: 'LatticeReduce[{{…}, …}]', examples: ['LatticeReduce[{{1, 1, 1}, {-1, 0, 2}, {3, 5, 6}}]'], desc: t('LLL-reduced basis of an integer lattice.', "Base réduite (LLL) d'un réseau entier.", '整数格子の LLL 簡約基底。') },
+    ],
+  },
+  {
+    id: 'solving',
+    title: t('Solving & logic', 'Résolution et logique', '求解・論理'),
+    fns: [
+      { name: 'SatisfiableQ', syntax: 'SatisfiableQ[constraint]', examples: ['SatisfiableQ[x > 5 && x < 8]'], desc: t('True if the constraints are satisfiable (linear arithmetic).', 'Vrai si les contraintes sont satisfiables (arithmétique linéaire).', '制約が充足可能なら True（線形算術）。') },
+      { name: 'FindInstance', syntax: 'FindInstance[c, vars]  ·  [c, vars, dom]', examples: ['FindInstance[x + y == 10 && x - y == 2, {x, y}]', 'FindInstance[2*x == 3, {x}, Reals]'], desc: t('One assignment satisfying the constraints; domain Integers (default) or Reals.', 'Une affectation satisfaisant les contraintes ; domaine Integers (défaut) ou Reals.', '制約を満たす一つの割り当て。領域は Integers（既定）または Reals。') },
+      { name: 'Solve', syntax: 'Solve[c, vars]', examples: ['Solve[2*x == 6, x]'], desc: t('Alias of FindInstance for equations.', 'Alias de FindInstance pour les équations.', '方程式向けの FindInstance の別名。') },
+      { name: 'SMT', syntax: 'SMT["…"]', examples: ['SMT["(declare-const x Int)(assert (> x 5))(assert (< x 7))(check-sat)(get-value (x))"]'], desc: t('Run a raw SMT-LIB 2 script through the z3rs solver.', 'Exécute un script SMT-LIB 2 brut via le solveur z3rs.', 'SMT-LIB 2 スクリプトを z3rs ソルバーで実行。') },
+    ],
+  },
+]

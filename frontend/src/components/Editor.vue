@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, ref } from 'vue'
-import { EditorState } from '@codemirror/state'
+import { onMounted, onBeforeUnmount, ref, watch } from 'vue'
+import { EditorState, Compartment } from '@codemirror/state'
 import { EditorView, keymap, placeholder } from '@codemirror/view'
 import {
   defaultKeymap,
@@ -9,6 +9,7 @@ import {
   insertNewlineAndIndent,
 } from '@codemirror/commands'
 
+const props = defineProps<{ placeholder?: string }>()
 const emit = defineEmits<{
   (e: 'submit', value: string): void
   (e: 'history', dir: -1 | 1): void
@@ -16,6 +17,9 @@ const emit = defineEmits<{
 
 const host = ref<HTMLDivElement | null>(null)
 let view: EditorView | null = null
+// Placeholder lives in its own compartment so it can be swapped when the UI
+// language changes.
+const placeholderComp = new Compartment()
 
 // A restrained editor theme that inherits the page's typography and colors so
 // the input line feels native to the notebook rather than bolted on.
@@ -65,7 +69,7 @@ onMounted(() => {
       doc: '',
       extensions: [
         history(),
-        placeholder('Type an expression…'),
+        placeholderComp.of(placeholder(props.placeholder ?? '')),
         keymap.of([
           // Enter evaluates; Shift-Enter inserts a newline for multi-line input.
           { key: 'Enter', run: submit },
@@ -96,6 +100,13 @@ onMounted(() => {
   })
   view.focus()
 })
+
+watch(
+  () => props.placeholder,
+  (v) => {
+    view?.dispatch({ effects: placeholderComp.reconfigure(placeholder(v ?? '')) })
+  },
+)
 
 onBeforeUnmount(() => {
   view?.destroy()
