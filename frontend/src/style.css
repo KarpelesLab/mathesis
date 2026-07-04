@@ -419,20 +419,62 @@ kbd {
   }
 }
 
-.stop {
-  font-family: var(--font-sans);
-  font-size: 0.78rem;
+/* pending output: animated dots + an inline (stop) control */
+.pending {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.dots {
+  display: inline-flex;
+  gap: 0.3rem;
+}
+.dots i {
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: blink 1.2s ease-in-out infinite;
+}
+.dots i:nth-child(2) {
+  animation-delay: 0.18s;
+}
+.dots i:nth-child(3) {
+  animation-delay: 0.36s;
+}
+@keyframes blink {
+  0%,
+  70%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  35% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+.stop-inline {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
   color: var(--error);
-  background: rgba(255, 138, 138, 0.1);
-  border: 1px solid var(--error);
-  border-radius: 999px;
-  padding: 0.3rem 0.75rem;
+  background: none;
+  border: none;
+  padding: 0.1rem 0.15rem;
   cursor: pointer;
-  white-space: nowrap;
+  border-radius: 5px;
   transition: background 0.15s;
 }
-.stop:hover {
-  background: rgba(255, 138, 138, 0.2);
+.stop-inline::before {
+  content: '(';
+  color: var(--faint);
+}
+.stop-inline::after {
+  content: ')';
+  color: var(--faint);
+}
+.stop-inline:hover {
+  background: rgba(255, 138, 138, 0.14);
 }
 
 /* very large results: shown as truncated text, never fed to KaTeX */

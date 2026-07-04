@@ -21,7 +21,9 @@ import {
 interface Entry {
   n: number
   input: string
-  result: EvalResult
+  /** null while the computation is in flight. */
+  result: EvalResult | null
+  pending: boolean
 }
 
 const entries = ref<Entry[]>([])
@@ -71,10 +73,7 @@ onMounted(async () => {
 // page. We show it as truncated monospace text instead.
 const HUGE_OUTPUT = 4000
 
-async function pushEntry(input: string, result: EvalResult) {
-  counter.value += 1
-  entries.value.push({ n: counter.value, input, result })
-  historyPos.value = entries.value.length
+async function scrollToBottom() {
   await nextTick()
   scroller.value?.scrollTo({ top: scroller.value.scrollHeight, behavior: 'smooth' })
 }
@@ -82,9 +81,16 @@ async function pushEntry(input: string, result: EvalResult) {
 async function run(input: string) {
   if (busy.value) return
   busy.value = true
+
+  // Show the input immediately as a pending cell, before we start computing,
+  // so a long-running calculation is visible (and stoppable) as it runs.
+  counter.value += 1
+  const idx = entries.value.push({ n: counter.value, input, result: null, pending: true }) - 1
+  historyPos.value = entries.value.length
+  await scrollToBottom()
+
   try {
-    const result = await evaluateInput(input)
-    await pushEntry(input, result)
+    entries.value[idx].result = await evaluateInput(input)
   } catch (e) {
     let error: string
     if (e instanceof TimeoutError) {
@@ -94,9 +100,11 @@ async function run(input: string) {
     } else {
       error = `engine error: ${String(e)}`
     }
-    await pushEntry(input, { ok: false, error })
+    entries.value[idx].result = { ok: false, error }
   } finally {
+    entries.value[idx].pending = false
     busy.value = false
+    await scrollToBottom()
   }
 }
 
@@ -104,8 +112,8 @@ function stop() {
   cancelCurrent()
 }
 
-function isHuge(r: EvalResult): boolean {
-  return Boolean(r.ok && r.text && r.text.length >= HUGE_OUTPUT)
+function isHuge(r: EvalResult | null): boolean {
+  return Boolean(r && r.ok && r.text && r.text.length >= HUGE_OUTPUT)
 }
 
 function preview(text: string): string {
@@ -145,7 +153,7 @@ function flash(outcome: ShareOutcome) {
 
 async function shareCell(entry: Entry) {
   const url = singleShareUrl(entry.input)
-  const preview = entry.result.ok ? `${entry.input} = ${entry.result.text}` : entry.input
+  const preview = entry.result?.ok ? `${entry.input} = ${entry.result.text}` : entry.input
   flash(await shareLink(url, 'Mathesis computation', preview))
 }
 
@@ -221,15 +229,23 @@ async function shareNotebook() {
           <div class="io out">
             <span class="prompt out-prompt">Out[{{ entry.n }}]</span>
             <div class="result">
-              <div v-if="isHuge(entry.result)" class="huge">
-                <code>{{ preview(entry.result.text!) }}</code>
-                <span class="huge-note">{{ entry.result.text!.length.toLocaleString() }} characters — truncated for display</span>
-              </div>
-              <MathOutput
-                v-else-if="entry.result.ok && entry.result.tex"
-                :tex="entry.result.tex"
-              />
-              <div v-else class="error">{{ entry.result.error }}</div>
+              <span v-if="entry.pending" class="pending">
+                <span class="dots" aria-label="computing"><i></i><i></i><i></i></span>
+                <button class="stop-inline" title="Stop this computation" @click="stop">
+                  stop
+                </button>
+              </span>
+              <template v-else-if="entry.result">
+                <div v-if="isHuge(entry.result)" class="huge">
+                  <code>{{ preview(entry.result.text!) }}</code>
+                  <span class="huge-note">{{ entry.result.text!.length.toLocaleString() }} characters — truncated for display</span>
+                </div>
+                <MathOutput
+                  v-else-if="entry.result.ok && entry.result.tex"
+                  :tex="entry.result.tex"
+                />
+                <div v-else class="error">{{ entry.result.error }}</div>
+              </template>
             </div>
           </div>
         </li>
@@ -244,8 +260,7 @@ async function shareNotebook() {
           @submit="run"
           @history="browseHistory"
         />
-        <button v-if="busy" class="stop" title="Stop this computation" @click="stop">Stop</button>
-        <span v-else class="hint">↵</span>
+        <span class="hint">{{ busy ? '…' : '↵' }}</span>
       </div>
     </footer>
 
