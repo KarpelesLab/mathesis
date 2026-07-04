@@ -172,8 +172,8 @@ fn call(head: &str, args: &[Value]) -> EResult<Value> {
             arity(head, args, 1)?;
             sqrt(&args[0])
         }
-        "Sin" => real_unary(head, args, Float::sin),
-        "Cos" => real_unary(head, args, Float::cos),
+        "Sin" => transcendental(head, args, Float::sin, |c| c.sin()),
+        "Cos" => transcendental(head, args, Float::cos, |c| c.cos()),
         "Tan" => real_unary(head, args, Float::tan),
         "ArcSin" => real_unary(head, args, Float::asin),
         "ArcCos" => real_unary(head, args, Float::acos),
@@ -188,7 +188,7 @@ fn call(head: &str, args: &[Value]) -> EResult<Value> {
         "ArcSinh" => real_unary(head, args, Float::asinh),
         "ArcCosh" => real_unary(head, args, Float::acosh),
         "ArcTanh" => real_unary(head, args, Float::atanh),
-        "Exp" => real_unary(head, args, Float::exp),
+        "Exp" => transcendental(head, args, Float::exp, |c| c.exp()),
         "Log" => log(head, args),
         "Log2" => {
             arity(head, args, 1)?;
@@ -423,6 +423,7 @@ fn call(head: &str, args: &[Value]) -> EResult<Value> {
             match &args[0] {
                 // |a + b i| = sqrt(a² + b²).
                 Value::Cplx(c) => sqrt(&value::from_rational(c.norm_sqr())),
+                Value::CplxReal(c) => value::real(c.abs()),
                 _ => value::abs(&args[0]),
             }
         }
@@ -430,6 +431,7 @@ fn call(head: &str, args: &[Value]) -> EResult<Value> {
             arity(head, args, 1)?;
             match &args[0] {
                 Value::Cplx(c) => Ok(value::from_rational(c.re.clone())),
+                Value::CplxReal(c) => value::real(c.re.clone()),
                 other => value::to_float(other).map(|_| other.clone()),
             }
         }
@@ -437,6 +439,7 @@ fn call(head: &str, args: &[Value]) -> EResult<Value> {
             arity(head, args, 1)?;
             match &args[0] {
                 Value::Cplx(c) => Ok(value::from_rational(c.im.clone())),
+                Value::CplxReal(c) => value::real(c.im.clone()),
                 other => value::to_float(other).map(|_| Value::Int(Int::from(0))),
             }
         }
@@ -444,6 +447,9 @@ fn call(head: &str, args: &[Value]) -> EResult<Value> {
             arity(head, args, 1)?;
             match &args[0] {
                 Value::Cplx(c) => Ok(Value::Cplx(c.conj())),
+                Value::CplxReal(c) => {
+                    value::from_complex_float(Complex::new(c.re.clone(), c.im.neg()))
+                }
                 other => value::to_float(other).map(|_| other.clone()),
             }
         }
@@ -523,7 +529,18 @@ fn real_unary(
 /// `Log[x]` is the natural logarithm; `Log[b, x]` is the logarithm base `b`.
 fn log(head: &str, args: &[Value]) -> EResult<Value> {
     match args.len() {
-        1 => value::real(value::to_float(&args[0])?.ln(WORK_BITS, NEAR)),
+        1 => {
+            let z = &args[0];
+            // Complex, or a negative real (Log[-1] = i·π) → the complex logarithm.
+            if is_cplx(z) {
+                return value::from_complex_float(value::complex_float(z)?.ln());
+            }
+            let x = value::to_float(z)?;
+            if x.is_sign_negative() {
+                return value::from_complex_float(value::complex_float(z)?.ln());
+            }
+            value::real(x.ln(WORK_BITS, NEAR))
+        }
         2 => {
             let base = value::to_float(&args[0])?.ln(WORK_BITS, NEAR);
             if base.is_zero() {
@@ -533,6 +550,26 @@ fn log(head: &str, args: &[Value]) -> EResult<Value> {
             value::real(x.div(&base, WORK_BITS, NEAR))
         }
         _ => err(format!("{head} expects 1 or 2 arguments, got {}", args.len())),
+    }
+}
+
+fn is_cplx(v: &Value) -> bool {
+    matches!(v, Value::Cplx(_) | Value::CplxReal(_))
+}
+
+/// A one-argument transcendental: the real `Float` method for real inputs, the
+/// `Complex<Float>` method for complex ones.
+fn transcendental(
+    head: &str,
+    args: &[Value],
+    rf: impl Fn(&Float, u64, RoundingMode) -> Float,
+    cf: impl Fn(&puremp::Complex<Float>) -> puremp::Complex<Float>,
+) -> EResult<Value> {
+    arity(head, args, 1)?;
+    if is_cplx(&args[0]) {
+        value::from_complex_float(cf(&value::complex_float(&args[0])?))
+    } else {
+        value::real(rf(&value::to_float(&args[0])?, WORK_BITS, NEAR))
     }
 }
 
@@ -546,7 +583,8 @@ fn sqrt(v: &Value) -> EResult<Value> {
                     Rational::from_integer(k),
                 )));
             }
-            return err("Sqrt of a negative non-square needs inexact complex, not supported yet");
+            // Otherwise an inexact complex root.
+            return value::from_complex_float(value::complex_float(v)?.sqrt());
         }
         // A perfect square is exact; a non-square integer is kept exact *and*
         // symbolic (√n), with its decimal shown alongside.
@@ -559,10 +597,13 @@ fn sqrt(v: &Value) -> EResult<Value> {
             val: Float::from_int(n, WORK_BITS, NEAR).sqrt(WORK_BITS, NEAR),
         });
     }
-    // A rational or real argument → an arbitrary-precision real approximation.
+    // Complex argument, or a negative real → a complex square root.
+    if is_cplx(v) {
+        return value::from_complex_float(value::complex_float(v)?.sqrt());
+    }
     let x = value::to_float(v)?;
     if x.is_sign_negative() {
-        return err("Sqrt of a negative number is not real (inexact complex not supported yet)");
+        return value::from_complex_float(value::complex_float(v)?.sqrt());
     }
     value::real(x.sqrt(WORK_BITS, NEAR))
 }
@@ -575,6 +616,7 @@ fn arg(v: &Value) -> EResult<Value> {
             let re = Float::from_rational(&c.re, WORK_BITS, NEAR);
             value::real(im.atan2(&re, WORK_BITS, NEAR))
         }
+        Value::CplxReal(c) => value::real(c.arg()),
         _ => {
             let x = value::to_float(v)?;
             value::real(Float::zero(WORK_BITS).atan2(&x, WORK_BITS, NEAR))

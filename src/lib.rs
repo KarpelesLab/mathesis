@@ -264,8 +264,6 @@ mod tests {
         assert!(out("Sqrt[-4]").contains("2 I"), "{}", out("Sqrt[-4]"));
         assert!(out("Sqrt[-1]").contains("\"text\":\"I\""));
         assert!(out("1/(1 + I)").contains("1/2 - 1/2 I"), "{}", out("1/(1 + I)"));
-        // inexact complex isn't supported → a clear error, not a wrong answer.
-        assert!(out("Pi*I").contains("\"ok\":false"), "{}", out("Pi*I"));
     }
 
     #[test]
@@ -310,6 +308,21 @@ mod tests {
         assert!(out("FindInstance[x > 5 && x < 5, {x}]").contains("{}"), "{}", out("FindInstance[x > 5 && x < 5, {x}]"));
         // Reals domain works too.
         assert!(out("FindInstance[2*x == 3, {x}, Reals]").contains("x ->"), "{}", out("FindInstance[2*x == 3, {x}, Reals]"));
+    }
+
+    #[test]
+    fn inexact_complex() {
+        // Irrational/transcendental times I → an inexact complex.
+        let pii = out("Pi*I");
+        assert!(pii.contains("3.141592653589793") && pii.contains("I"), "{pii}");
+        assert!(out("Sqrt[-2]").contains("1.4142135623730951"), "{}", out("Sqrt[-2]"));
+        assert!(out("Im[Pi*I]").contains("3.141592653589793"), "{}", out("Im[Pi*I]"));
+        assert!(out("Re[Pi*I]").contains("\"text\":\"0\""), "{}", out("Re[Pi*I]"));
+        // |√2 i| = √2, a real.
+        assert!(out("Abs[Sqrt[-2]]").contains("1.41421"), "{}", out("Abs[Sqrt[-2]]"));
+        // Exact complex is still exact.
+        assert!(out("I^2").contains("\"text\":\"-1\""));
+        assert!(out("Sqrt[-4]").contains("2 I"), "{}", out("Sqrt[-4]"));
     }
 
     #[test]

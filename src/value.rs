@@ -41,6 +41,10 @@ pub enum Value {
     /// imaginary part is guaranteed nonzero — a purely real value collapses back
     /// to `Int`/`Ratio` (see [`from_complex`]).
     Cplx(Complex<Rational>),
+    /// An inexact complex number (float parts) — the result once an irrational
+    /// or transcendental enters a complex computation (`Pi*I`, `Sqrt[-2]`,
+    /// `Exp[I*Pi]`). Imaginary part guaranteed nonzero (see [`from_complex_float`]).
+    CplxReal(Complex<Float>),
     Bool(bool),
     /// Opaque plain text — a string literal, or verbatim solver output from
     /// `SMT[..]`. Rendered as monospace, never typeset as math.
@@ -76,8 +80,114 @@ fn rat(n: i64) -> Rational {
     Rational::from_integer(Int::from(n))
 }
 
+/// Collapse an inexact complex to a real when its imaginary part vanishes; a
+/// non-finite component becomes an error.
+pub fn from_complex_float(c: Complex<Float>) -> EResult<Value> {
+    if c.re.is_nan() || c.im.is_nan() {
+        return err("result is undefined or not a number");
+    }
+    if c.im.is_zero() {
+        real(c.re)
+    } else {
+        Ok(Value::CplxReal(c))
+    }
+}
+
 fn is_complex(v: &Value) -> bool {
-    matches!(v, Value::Cplx(_))
+    matches!(v, Value::Cplx(_) | Value::CplxReal(_))
+}
+
+/// Can this value take the *exact* (Gaussian-rational) complex path?
+fn exact_complex_ok(v: &Value) -> bool {
+    matches!(v, Value::Int(_) | Value::Ratio(_) | Value::Cplx(_))
+}
+
+/// A real value as a complex float (`Float` has no `Default`, so `from_real` is
+/// unavailable — build with an explicit zero imaginary part).
+fn cf_real(f: Float) -> Complex<Float> {
+    Complex::new(f, Float::zero(WORK_BITS))
+}
+
+/// View any number as an inexact complex `Complex<Float>`.
+pub fn complex_float(v: &Value) -> EResult<Complex<Float>> {
+    Ok(match v {
+        Value::Int(n) => cf_real(Float::from_int(n, WORK_BITS, NEAR)),
+        Value::Ratio(r) => cf_real(Float::from_rational(r, WORK_BITS, NEAR)),
+        Value::Real(f) => cf_real(f.clone()),
+        Value::Sym { val, .. } => cf_real(val.clone()),
+        Value::Cplx(c) => Complex::new(
+            Float::from_rational(&c.re, WORK_BITS, NEAR),
+            Float::from_rational(&c.im, WORK_BITS, NEAR),
+        ),
+        Value::CplxReal(c) => c.clone(),
+        _ => return err("expected a number"),
+    })
+}
+
+// `Complex<Float>` arithmetic — component-wise over `Float`, since `puremp`'s
+// `Complex<Float>` exposes transcendentals but not the four operators.
+fn cf_add(a: &Complex<Float>, b: &Complex<Float>) -> Complex<Float> {
+    Complex::new(
+        a.re.add(&b.re, WORK_BITS, NEAR),
+        a.im.add(&b.im, WORK_BITS, NEAR),
+    )
+}
+fn cf_sub(a: &Complex<Float>, b: &Complex<Float>) -> Complex<Float> {
+    Complex::new(
+        a.re.sub(&b.re, WORK_BITS, NEAR),
+        a.im.sub(&b.im, WORK_BITS, NEAR),
+    )
+}
+fn cf_mul(a: &Complex<Float>, b: &Complex<Float>) -> Complex<Float> {
+    let re = a
+        .re
+        .mul(&b.re, WORK_BITS, NEAR)
+        .sub(&a.im.mul(&b.im, WORK_BITS, NEAR), WORK_BITS, NEAR);
+    let im = a
+        .re
+        .mul(&b.im, WORK_BITS, NEAR)
+        .add(&a.im.mul(&b.re, WORK_BITS, NEAR), WORK_BITS, NEAR);
+    Complex::new(re, im)
+}
+fn cf_div(a: &Complex<Float>, b: &Complex<Float>) -> Complex<Float> {
+    let denom = b
+        .re
+        .mul(&b.re, WORK_BITS, NEAR)
+        .add(&b.im.mul(&b.im, WORK_BITS, NEAR), WORK_BITS, NEAR);
+    let re = a
+        .re
+        .mul(&b.re, WORK_BITS, NEAR)
+        .add(&a.im.mul(&b.im, WORK_BITS, NEAR), WORK_BITS, NEAR)
+        .div(&denom, WORK_BITS, NEAR);
+    let im = a
+        .im
+        .mul(&b.re, WORK_BITS, NEAR)
+        .sub(&a.re.mul(&b.im, WORK_BITS, NEAR), WORK_BITS, NEAR)
+        .div(&denom, WORK_BITS, NEAR);
+    Complex::new(re, im)
+}
+fn cf_zero(c: &Complex<Float>) -> bool {
+    c.re.is_zero() && c.im.is_zero()
+}
+/// Integer power of an inexact complex, by exponentiation by squaring.
+fn cf_powi(base: &Complex<Float>, e: i64) -> Complex<Float> {
+    let one = cf_real(Float::from_int(&Int::from(1), WORK_BITS, NEAR));
+    let (mut b, mut n) = if e < 0 {
+        (cf_div(&one, base), e.unsigned_abs())
+    } else {
+        (base.clone(), e as u64)
+    };
+    let mut acc = one;
+    while n > 0 {
+        if n & 1 == 1 {
+            acc = cf_mul(&acc, &b);
+        }
+        n >>= 1;
+        if n > 0 {
+            b = cf_mul(&b, &b);
+        }
+    }
+    acc
 }
 
 /// View any *exact* value as a complex number. Inexact operands (reals /
@@ -189,7 +299,11 @@ pub fn real(f: Float) -> EResult<Value> {
 
 pub fn add(a: &Value, b: &Value) -> EResult<Value> {
     if is_complex(a) || is_complex(b) {
-        Ok(from_complex(complex_rat(a)?.add(&complex_rat(b)?)))
+        if exact_complex_ok(a) && exact_complex_ok(b) {
+            Ok(from_complex(complex_rat(a)?.add(&complex_rat(b)?)))
+        } else {
+            from_complex_float(cf_add(&complex_float(a)?, &complex_float(b)?))
+        }
     } else if is_inexact(a) || is_inexact(b) {
         real(to_float(a)?.add(&to_float(b)?, WORK_BITS, NEAR))
     } else {
@@ -199,7 +313,11 @@ pub fn add(a: &Value, b: &Value) -> EResult<Value> {
 
 pub fn sub(a: &Value, b: &Value) -> EResult<Value> {
     if is_complex(a) || is_complex(b) {
-        Ok(from_complex(complex_rat(a)?.sub(&complex_rat(b)?)))
+        if exact_complex_ok(a) && exact_complex_ok(b) {
+            Ok(from_complex(complex_rat(a)?.sub(&complex_rat(b)?)))
+        } else {
+            from_complex_float(cf_sub(&complex_float(a)?, &complex_float(b)?))
+        }
     } else if is_inexact(a) || is_inexact(b) {
         real(to_float(a)?.sub(&to_float(b)?, WORK_BITS, NEAR))
     } else {
@@ -209,7 +327,11 @@ pub fn sub(a: &Value, b: &Value) -> EResult<Value> {
 
 pub fn mul(a: &Value, b: &Value) -> EResult<Value> {
     if is_complex(a) || is_complex(b) {
-        Ok(from_complex(complex_rat(a)?.mul(&complex_rat(b)?)))
+        if exact_complex_ok(a) && exact_complex_ok(b) {
+            Ok(from_complex(complex_rat(a)?.mul(&complex_rat(b)?)))
+        } else {
+            from_complex_float(cf_mul(&complex_float(a)?, &complex_float(b)?))
+        }
     } else if is_inexact(a) || is_inexact(b) {
         real(to_float(a)?.mul(&to_float(b)?, WORK_BITS, NEAR))
     } else {
@@ -219,11 +341,19 @@ pub fn mul(a: &Value, b: &Value) -> EResult<Value> {
 
 pub fn div(a: &Value, b: &Value) -> EResult<Value> {
     if is_complex(a) || is_complex(b) {
-        let cb = complex_rat(b)?;
-        if cb.is_zero() {
-            return err("division by zero");
+        if exact_complex_ok(a) && exact_complex_ok(b) {
+            let cb = complex_rat(b)?;
+            if cb.is_zero() {
+                return err("division by zero");
+            }
+            Ok(from_complex(complex_rat(a)?.div(&cb)))
+        } else {
+            let cb = complex_float(b)?;
+            if cf_zero(&cb) {
+                return err("division by zero");
+            }
+            from_complex_float(cf_div(&complex_float(a)?, &cb))
         }
-        Ok(from_complex(complex_rat(a)?.div(&cb)))
     } else if is_inexact(a) || is_inexact(b) {
         let fb = to_float(b)?;
         if fb.is_zero() {
@@ -240,12 +370,13 @@ pub fn div(a: &Value, b: &Value) -> EResult<Value> {
 }
 
 pub fn neg(a: &Value) -> EResult<Value> {
-    if let Value::Cplx(c) = a {
-        Ok(from_complex(c.neg()))
-    } else if is_inexact(a) {
-        Ok(Value::Real(to_float(a)?.neg()))
-    } else {
-        Ok(from_rational(to_rational(a)?.neg()))
+    match a {
+        Value::Cplx(c) => Ok(from_complex(c.neg())),
+        Value::CplxReal(c) => {
+            from_complex_float(Complex::new(c.re.neg(), c.im.neg()))
+        }
+        _ if is_inexact(a) => Ok(Value::Real(to_float(a)?.neg())),
+        _ => Ok(from_rational(to_rational(a)?.neg())),
     }
 }
 
@@ -258,13 +389,20 @@ pub fn abs(v: &Value) -> EResult<Value> {
 }
 
 pub fn pow(base: &Value, exp: &Value) -> EResult<Value> {
-    // Complex base (or exponent) — only integer exponents are supported.
+    // Complex base or exponent.
     if is_complex(base) || is_complex(exp) {
-        let cb = complex_rat(base)?;
-        let e = to_i64(&as_int(exp).map_err(|_| {
-            EvalError("a complex value can only be raised to an integer power".into())
-        })?)?;
-        return complex_pow(cb, e);
+        // An integer exponent stays exact when the base is exact.
+        if let Ok(n) = as_int(exp) {
+            let e = to_i64(&n)?;
+            if exact_complex_ok(base) {
+                return complex_pow(complex_rat(base)?, e);
+            }
+            return from_complex_float(cf_powi(&complex_float(base)?, e));
+        }
+        // A general (fractional / complex) exponent → Complex<Float>::pow.
+        let b = complex_float(base)?;
+        let w = complex_float(exp)?;
+        return from_complex_float(b.pow(&w));
     }
 
     // Exact fast path: an exact base raised to an *integer* exponent stays exact.
@@ -308,6 +446,7 @@ impl Value {
             Value::Real(f) => real_string(f),
             Value::Sym { text, .. } => text.clone(),
             Value::Cplx(c) => complex_render(c, false),
+            Value::CplxReal(c) => complex_render_float(c, false),
             Value::Text(s) => s.clone(),
             Value::Bool(b) => if *b { "True" } else { "False" }.to_string(),
             Value::Decimal(s) => s.clone(),
@@ -351,6 +490,7 @@ impl Value {
             Value::Real(f) => real_string(f),
             Value::Sym { tex, .. } => tex.clone(),
             Value::Cplx(c) => complex_render(c, true),
+            Value::CplxReal(c) => complex_render_float(c, true),
             // Not typeset — the frontend renders text results as monospace via
             // the `plain` flag; this arm exists only for completeness.
             Value::Text(s) => s.clone(),
@@ -432,6 +572,28 @@ fn complex_render(c: &Complex<Rational>, tex: bool) -> String {
     }
     if !im_abs.is_one() {
         s.push_str(&num(&im_abs));
+        s.push_str(if tex { "\\," } else { " " });
+    }
+    s.push_str(unit);
+    s
+}
+
+/// Render an inexact complex `a + b i` with decimal parts.
+fn complex_render_float(c: &Complex<Float>, tex: bool) -> String {
+    let unit = if tex { "i" } else { "I" };
+    let neg_im = c.im.is_sign_negative();
+    let im_abs = if neg_im { c.im.neg() } else { c.im.clone() };
+
+    let mut s = String::new();
+    if !c.re.is_zero() {
+        s.push_str(&real_string(&c.re));
+        s.push_str(if neg_im { " - " } else { " + " });
+    } else if neg_im {
+        s.push('-');
+    }
+    let im_str = real_string(&im_abs);
+    if im_str != "1" {
+        s.push_str(&im_str);
         s.push_str(if tex { "\\," } else { " " });
     }
     s.push_str(unit);
