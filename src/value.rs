@@ -56,6 +56,9 @@ pub enum Value {
     /// arithmetic.
     Decimal(String),
     List(Vec<Value>),
+    /// A solution / substitution set from `Solve`/`FindInstance`, rendered as
+    /// typeset rules `{x → 3, y → ½}`.
+    Rules(Vec<(String, Value)>),
     /// The result of `Factor[..]`: an optional overall sign and (prime, power)
     /// pairs, rendered as a product.
     Factored { negative: bool, factors: Vec<(Int, u32)> },
@@ -468,6 +471,10 @@ impl Value {
                 let inner: Vec<String> = xs.iter().map(Value::to_text).collect();
                 format!("{{{}}}", inner.join(", "))
             }
+            Value::Rules(rs) => {
+                let inner: Vec<String> = rs.iter().map(|(k, v)| format!("{k} -> {}", v.to_text())).collect();
+                format!("{{{}}}", inner.join(", "))
+            }
             Value::Factored { negative, factors } => {
                 let mut parts: Vec<String> = Vec::new();
                 if *negative {
@@ -520,6 +527,17 @@ impl Value {
                     format!("\\left\\{{{}\\right\\}}", inner.join(",\\ "))
                 }
             },
+            Value::Rules(rs) => {
+                if rs.is_empty() {
+                    "\\left\\{\\,\\right\\}".to_string()
+                } else {
+                    let inner: Vec<String> = rs
+                        .iter()
+                        .map(|(k, v)| format!("{k} \\to {}", v.to_tex()))
+                        .collect();
+                    format!("\\left\\{{{}\\right\\}}", inner.join(",\\ "))
+                }
+            }
             Value::Factored { negative, factors } => {
                 let mut parts: Vec<String> = Vec::new();
                 if *negative {

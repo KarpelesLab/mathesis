@@ -9,9 +9,11 @@
 
 use std::collections::BTreeSet;
 
+use puremp::Int;
+
 use crate::ast::{Expr, Op};
 use crate::error::{EResult, EvalError, err};
-use crate::value::Value;
+use crate::value::{self, Value};
 
 pub fn solve_form(head: &str, args: &[Expr]) -> EResult<Value> {
     match head {
@@ -34,6 +36,20 @@ pub fn solve_form(head: &str, args: &[Expr]) -> EResult<Value> {
                 Domain::Integers
             };
             find_instance(&args[0], &wanted, domain)
+        }
+        "Maximize" | "Minimize" => {
+            if !(3..=4).contains(&args.len()) {
+                return err(format!(
+                    "{head} expects Objective, Constraints, {{variables}}, and an optional domain"
+                ));
+            }
+            let wanted = var_list(&args[2])?;
+            let domain = if args.len() == 4 {
+                domain_of(&args[3])?
+            } else {
+                Domain::Reals
+            };
+            optimize(head == "Maximize", &args[0], &args[1], &wanted, domain)
         }
         _ => err(format!("unknown solver form `{head}`")),
     }
@@ -106,15 +122,63 @@ fn find_instance(e: &Expr, wanted: &[String], domain: Domain) -> EResult<Value> 
     let decision = run(&build_script(&vars, &term, domain, None))?;
     match decision.first().map(String::as_str) {
         // Mathematica returns {} when there is no instance.
-        Some("unsat") => Ok(Value::Text("{}".to_string())),
+        Some("unsat") => Ok(Value::Rules(Vec::new())),
         Some("sat") => {
             let lines = run(&build_script(&vars, &term, domain, Some(wanted)))?;
             let model = lines.get(1).map(String::as_str).unwrap_or("");
-            Ok(Value::Text(parse_model(model)?))
+            Ok(Value::Rules(parse_model(model)))
         }
         _ => err(
             "FindInstance: the solver returned `unknown` (the constraint may be nonlinear or use an unsupported theory)",
         ),
+    }
+}
+
+/// `Maximize[obj, constraints, {vars}]` / `Minimize[…]` — optimize a linear
+/// objective subject to constraints, returning `{optimum, {x -> …, …}}`.
+fn optimize(
+    maximize: bool,
+    obj: &Expr,
+    constraints: &Expr,
+    wanted: &[String],
+    domain: Domain,
+) -> EResult<Value> {
+    let head = if maximize { "Maximize" } else { "Minimize" };
+    let mut vars: BTreeSet<String> = wanted.iter().cloned().collect();
+    let cterm = translate_top(constraints, &mut vars)?;
+    let oterm = translate(obj, &mut vars)?;
+
+    let mut s = format!("(set-logic {})\n", domain.logic());
+    for v in &vars {
+        s.push_str(&format!("(declare-const {} {})\n", v, domain.sort()));
+    }
+    s.push_str(&format!("(assert {cterm})\n"));
+    s.push_str(&format!(
+        "({} {oterm})\n(check-sat)\n(get-objectives)\n(get-value ({}))\n",
+        if maximize { "maximize" } else { "minimize" },
+        wanted.join(" ")
+    ));
+
+    let lines = run(&s)?;
+    match lines.first().map(String::as_str) {
+        Some("unsat") => err(format!("{head}: the constraints have no feasible solution")),
+        Some("sat") => {
+            let obj_line = lines.get(1).map(String::as_str).unwrap_or("");
+            if obj_line.contains("oo") {
+                return err(format!("{head}: the objective is unbounded"));
+            }
+            if obj_line.contains("epsilon") {
+                return err(format!(
+                    "{head}: the optimum is a strict bound and is not attained"
+                ));
+            }
+            let opt = objective_value(obj_line);
+            let model = lines.get(2).map(String::as_str).unwrap_or("");
+            Ok(Value::List(vec![opt, Value::Rules(parse_model(model))]))
+        }
+        _ => err(format!(
+            "{head}: the solver returned `unknown` (the problem may be nonlinear)"
+        )),
     }
 }
 
@@ -267,24 +331,42 @@ enum Sexp {
     List(Vec<Sexp>),
 }
 
-fn parse_model(line: &str) -> EResult<String> {
+fn parse_str(line: &str) -> Option<Sexp> {
     let toks = tokenize(line);
     let mut pos = 0;
-    let sexp = parse_sexp(&toks, &mut pos)
-        .ok_or_else(|| EvalError("could not parse the solver's model".into()))?;
-    let pairs = match sexp {
-        Sexp::List(p) => p,
-        Sexp::Atom(_) => return err("unexpected model shape from the solver"),
+    parse_sexp(&toks, &mut pos)
+}
+
+/// Parse a `((x 6) (y (/ 1 2)))` model into exact `(name, Value)` pairs.
+fn parse_model(line: &str) -> Vec<(String, Value)> {
+    let pairs = match parse_str(line) {
+        Some(Sexp::List(p)) => p,
+        _ => return Vec::new(),
     };
     let mut out = Vec::new();
     for pair in &pairs {
         if let Sexp::List(kv) = pair {
             if let [Sexp::Atom(name), value] = &kv[..] {
-                out.push(format!("{name} -> {}", render_value(value)));
+                out.push((name.clone(), sexp_to_value(value)));
             }
         }
     }
-    Ok(format!("{{{}}}", out.join(", ")))
+    out
+}
+
+/// The optimum from a `(objectives ((<objective> <value>)))` get-objectives line.
+fn objective_value(line: &str) -> Value {
+    if let Some(Sexp::List(items)) = parse_str(line) {
+        // items[0] is the atom `objectives`; each following item is a pair.
+        for item in items.iter().skip(1) {
+            if let Sexp::List(kv) = item {
+                if let Some(val) = kv.last() {
+                    return sexp_to_value(val);
+                }
+            }
+        }
+    }
+    Value::Text("?".to_string())
 }
 
 fn tokenize(s: &str) -> Vec<String> {
@@ -329,19 +411,60 @@ fn parse_sexp(toks: &[String], pos: &mut usize) -> Option<Sexp> {
     }
 }
 
-fn render_value(s: &Sexp) -> String {
+/// Convert an SMT value s-expression into an exact Mathesis value: integers,
+/// `(/ a b)` fractions, `(- x)` negations, decimals, and booleans; anything else
+/// falls back to its textual form.
+fn sexp_to_value(s: &Sexp) -> Value {
+    match s {
+        Sexp::Atom(a) => atom_value(a),
+        Sexp::List(items) => match &items[..] {
+            [Sexp::Atom(op), x] if op == "-" => {
+                value::neg(&sexp_to_value(x)).unwrap_or_else(|_| Value::Text(render_str(s)))
+            }
+            [Sexp::Atom(op), a, b] if op == "/" => {
+                value::div(&sexp_to_value(a), &sexp_to_value(b))
+                    .unwrap_or_else(|_| Value::Text(render_str(s)))
+            }
+            _ => Value::Text(render_str(s)),
+        },
+    }
+}
+
+fn atom_value(a: &str) -> Value {
+    match a {
+        "true" => return Value::Bool(true),
+        "false" => return Value::Bool(false),
+        _ => {}
+    }
+    if let Ok(n) = Int::from_str_radix(a, 10) {
+        return Value::Int(n);
+    }
+    if let Some(v) = parse_decimal(a) {
+        return v;
+    }
+    Value::Text(a.to_string())
+}
+
+/// A decimal literal like `1.0` or `-1.5` as an exact rational value.
+fn parse_decimal(a: &str) -> Option<Value> {
+    let (int, frac) = a.split_once('.')?;
+    if frac.is_empty() || !frac.bytes().all(|b| b.is_ascii_digit()) {
+        return None;
+    }
+    let ip = int.strip_prefix('-').unwrap_or(int);
+    if ip.is_empty() || !ip.bytes().all(|b| b.is_ascii_digit()) {
+        return None;
+    }
+    let num = Int::from_str_radix(&format!("{int}{frac}"), 10).ok()?;
+    let den = Int::from(10).pow(frac.len() as u32);
+    Some(value::from_rational(puremp::Rational::new(num, den)))
+}
+
+fn render_str(s: &Sexp) -> String {
     match s {
         Sexp::Atom(a) => a.clone(),
-        Sexp::List(items) => match &items[..] {
-            // (- x) → negation; (/ a b) → fraction.
-            [Sexp::Atom(op), x] if op == "-" => format!("-{}", render_value(x)),
-            [Sexp::Atom(op), a, b] if op == "/" => {
-                format!("{}/{}", render_value(a), render_value(b))
-            }
-            _ => {
-                let parts: Vec<String> = items.iter().map(render_value).collect();
-                format!("({})", parts.join(" "))
-            }
-        },
+        Sexp::List(items) => {
+            format!("({})", items.iter().map(render_str).collect::<Vec<_>>().join(" "))
+        }
     }
 }

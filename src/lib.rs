@@ -364,6 +364,21 @@ mod tests {
     }
 
     #[test]
+    fn optimization_and_typeset_solutions() {
+        // FindInstance renders as typeset rules (tex uses \to and \frac).
+        let fi = out("FindInstance[2*x == 3, {x}, Reals]");
+        assert!(fi.contains("\\\\to") && fi.contains("\\\\frac{3}{2}"), "{fi}");
+        // Linear optimization returns {optimum, {assignment}}.
+        let mx = out("Maximize[x + y, x + 2*y <= 14 && 3*x - y >= 0 && x - y <= 2, {x, y}, Reals]");
+        assert!(mx.contains("\"text\":\"{10, {x -> 6, y -> 4}}\""), "{mx}");
+        let mn = out("Minimize[y, y >= x && x >= 3, {x, y}]");
+        assert!(mn.contains("{3, {x -> 3, y -> 3}}"), "{mn}");
+        // Unbounded / infeasible objectives error clearly.
+        assert!(out("Maximize[x, x >= 0, {x}]").contains("unbounded"), "{}", out("Maximize[x, x >= 0, {x}]"));
+        assert!(out("Maximize[x, x >= 5 && x <= 1, {x}]").contains("\"ok\":false"));
+    }
+
+    #[test]
     fn errors_are_reported() {
         assert!(out("1/0").contains("\"ok\":false"));
         assert!(out("Foo[1]").contains("unknown function"));

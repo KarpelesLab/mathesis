@@ -89,7 +89,10 @@ pub fn eval(e: &Expr) -> EResult<Value> {
         // Solver forms hold their arguments unevaluated — the constraint is
         // translated to SMT-LIB, not computed.
         Expr::Call(head, args)
-            if matches!(head.as_str(), "SatisfiableQ" | "FindInstance" | "Solve") =>
+            if matches!(
+                head.as_str(),
+                "SatisfiableQ" | "FindInstance" | "Solve" | "Maximize" | "Minimize"
+            ) =>
         {
             crate::solve::solve_form(head, args)
         }
