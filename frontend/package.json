@@ -1,0 +1,25 @@
+{
+  "name": "mathesis-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Vue 3 + Vite notebook UI for the Mathesis wasm engine.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "wasm": "cd .. && wasm-pack build --target web --out-dir frontend/src/pkg --release"
+  },
+  "dependencies": {
+    "@codemirror/commands": "^6.7.1",
+    "@codemirror/state": "^6.4.1",
+    "@codemirror/view": "^6.34.1",
+    "katex": "^0.16.11",
+    "vue": "^3.5.13"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.1",
+    "typescript": "^5.6.3",
+    "vite": "^6.0.3"
+  }
+}

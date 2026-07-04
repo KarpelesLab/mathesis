@@ -1,0 +1,16 @@
+# Rust
+/target
+Cargo.lock
+
+# wasm-pack output (generated in CI, imported by the frontend)
+/frontend/src/pkg
+/pkg
+
+# Node / Vite
+/frontend/node_modules
+/frontend/dist
+/frontend/.vite
+
+# Editor / OS
+.DS_Store
+*.swp

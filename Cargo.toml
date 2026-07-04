@@ -1,0 +1,29 @@
+[package]
+name = "mathesis"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+description = "A Mathematica-style computational notebook for the web — a wasm frontend to pure-Rust math engines (puremp, z3rs)."
+repository = "https://github.com/KarpelesLab/mathesis"
+license = "MIT"
+keywords = ["mathematics", "wasm", "computer-algebra", "notebook", "wolfram"]
+categories = ["mathematics", "wasm"]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# Mathesis is a *frontend*: it owns the language (lexer/parser/evaluator) and the
+# rendering, and delegates the actual arithmetic to pure-Rust engines. `puremp`
+# supplies the exact numeric tower (arbitrary-precision integers & rationals);
+# only the `rational` feature layer is needed, kept `no_std`+`alloc`.
+puremp = { version = "0.1.8", default-features = false, features = ["rational"] }
+
+# wasm bindings for the browser.
+wasm-bindgen = "0.2"
+
+[profile.release]
+opt-level = "s"   # optimize for size — this ships to the browser
+lto = true
+codegen-units = 1
+panic = "abort"

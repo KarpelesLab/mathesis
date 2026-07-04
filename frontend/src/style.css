@@ -1,0 +1,341 @@
+/* ------------------------------------------------------------------ *
+ *  Mathesis — notebook theme
+ *  A scholarly, near-ink canvas with a violet→cyan accent. Everything
+ *  is system-font based so the app loads instantly and works offline.
+ * ------------------------------------------------------------------ */
+
+:root {
+  --bg: #0a0b10;
+  --bg-2: #0e1017;
+  --panel: #14161f;
+  --panel-2: #191c27;
+  --ink: #e8eaf2;
+  --muted: #7b8194;
+  --faint: #565c70;
+  --border: #232634;
+  --border-soft: #1b1e29;
+
+  --accent: #8b7cff; /* violet */
+  --accent-2: #4fd6e0; /* cyan */
+  --accent-dim: rgba(139, 124, 255, 0.22);
+  --accent-glow: rgba(139, 124, 255, 0.35);
+  --error: #ff8a8a;
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
+  --font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Fira Code", "Cascadia Code", Menlo,
+    Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background-color: var(--bg);
+  /* Faint blueprint grid + two soft aurora glows behind the content. */
+  background-image:
+    radial-gradient(900px 600px at 12% -10%, rgba(139, 124, 255, 0.1), transparent 60%),
+    radial-gradient(800px 520px at 100% 0%, rgba(79, 214, 224, 0.07), transparent 55%),
+    linear-gradient(var(--border-soft) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border-soft) 1px, transparent 1px);
+  background-size:
+    100% 100%,
+    100% 100%,
+    34px 34px,
+    34px 34px;
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+#app {
+  height: 100%;
+}
+
+.app {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 1.25rem;
+}
+
+/* ---- top bar ---- */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.4rem 0.25rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.mark {
+  font-size: 2rem;
+  line-height: 1;
+  color: var(--accent);
+  text-shadow: 0 0 22px var(--accent-glow);
+}
+
+.titles h1 {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-weight: 600;
+  font-size: 1.55rem;
+  letter-spacing: 0.01em;
+  background: linear-gradient(100deg, var(--ink), var(--accent) 70%, var(--accent-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.titles p {
+  margin: 0.1rem 0 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.repo {
+  font-size: 0.82rem;
+  color: var(--muted);
+  text-decoration: none;
+  padding: 0.4rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  transition: color 0.15s, border-color 0.15s;
+}
+.repo:hover {
+  color: var(--ink);
+  border-color: var(--accent);
+}
+
+/* ---- scroll region ---- */
+.scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem 0.25rem 1rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.scroll::-webkit-scrollbar {
+  width: 10px;
+}
+.scroll::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+/* ---- welcome ---- */
+.welcome {
+  margin: 1rem auto 2rem;
+  max-width: 640px;
+}
+.lede {
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.65;
+  text-align: center;
+}
+kbd {
+  font-family: var(--font-mono);
+  font-size: 0.8em;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  padding: 0.05em 0.4em;
+  color: var(--ink);
+}
+.examples {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  justify-content: center;
+}
+.chip {
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.45rem 0.7rem;
+  cursor: pointer;
+  transition: transform 0.12s, border-color 0.15s, background 0.15s;
+}
+.chip:hover {
+  border-color: var(--accent);
+  background: var(--panel-2);
+  transform: translateY(-1px);
+}
+
+/* ---- cells ---- */
+.cells {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.6rem;
+}
+.cell {
+  animation: rise 0.28s ease both;
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.io {
+  display: grid;
+  grid-template-columns: 4.4rem 1fr;
+  align-items: baseline;
+  gap: 0.6rem;
+}
+.io.out {
+  margin-top: 0.4rem;
+}
+.prompt {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  text-align: right;
+  user-select: none;
+  padding-top: 0.15rem;
+  white-space: nowrap;
+}
+.in-prompt {
+  color: var(--faint);
+}
+.out-prompt {
+  color: var(--accent);
+}
+
+.source {
+  font-family: var(--font-mono);
+  font-size: 1.02rem;
+  color: var(--ink);
+  background: none;
+  border: none;
+  text-align: left;
+  padding: 0.15rem 0;
+  cursor: pointer;
+  word-break: break-word;
+  border-radius: 4px;
+  transition: color 0.15s;
+}
+.source:hover {
+  color: var(--accent-2);
+}
+
+.result {
+  font-family: var(--font-serif);
+  font-size: 1.28rem;
+  color: var(--ink);
+  min-width: 0;
+}
+.error {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  color: var(--error);
+  background: rgba(255, 138, 138, 0.07);
+  border-left: 2px solid var(--error);
+  padding: 0.4rem 0.7rem;
+  border-radius: 0 6px 6px 0;
+}
+
+/* KaTeX should inherit our ink color and never overflow the page. */
+.katex {
+  color: var(--ink);
+  font-size: 1.15em;
+}
+.katex-display {
+  margin: 0;
+  text-align: left;
+}
+
+/* ---- composer ---- */
+.composer {
+  padding: 0.75rem 0 1rem;
+  border-top: 1px solid var(--border);
+}
+.composer-inner {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: linear-gradient(var(--panel), var(--bg-2));
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.7rem 0.9rem;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+.composer-inner:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim), 0 10px 34px rgba(0, 0, 0, 0.4);
+}
+.live-prompt {
+  color: var(--accent);
+  text-align: left;
+}
+.hint {
+  font-family: var(--font-mono);
+  color: var(--faint);
+  font-size: 1rem;
+  user-select: none;
+}
+.hint.busy {
+  color: var(--accent-2);
+  animation: pulse 1s ease-in-out infinite;
+}
+@keyframes pulse {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.version {
+  position: fixed;
+  bottom: 0.5rem;
+  right: 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--faint);
+  pointer-events: none;
+}
+
+@media (max-width: 560px) {
+  .titles p {
+    display: none;
+  }
+  .io {
+    grid-template-columns: 3.2rem 1fr;
+    gap: 0.4rem;
+  }
+  .result {
+    font-size: 1.12rem;
+  }
+}
