@@ -107,11 +107,11 @@ Builtins (all delegating to `puremp`):
   variable bound; out-of-domain points become gaps.
 - **Solving / theorem proving** (via [`z3rs`](https://github.com/KarpelesLab/z3rs),
   a pure-Rust Z3 port) —
-  - `SatisfiableQ[c]` → `True`/`False`; `FindInstance[c, vars]` and
-    `Solve[c, vars]` find a satisfying assignment, returned as **exact, typeset
-    rules** (`{x → 6, y → 4}`, or `{}` if none — reals as exact fractions like
-    `x → 3/2`). An optional third argument picks the domain: `Integers` (default)
-    or `Reals`. Constraints use `== != < <= > >= && ||` and the heads `And`,
+  - `SatisfiableQ[c]` → `True`/`False`. `FindInstance[c, vars]` finds one
+    satisfying assignment; `Solve[c, vars]` returns **all** solutions over the
+    integers (sorted, capped), or one over the reals — each as **exact, typeset
+    rules** (`{x → 6, y → 4}`, `{}` if none, reals as fractions like `x → 3/2`).
+    An optional third argument picks the domain: `Integers` (default) or `Reals`. Constraints use `== != < <= > >= && ||` and the heads `And`,
     `Or`, `Not`, `Implies`, `Xor`. Variables used only in boolean positions are
     inferred as propositions, so pure logic works too — `SatisfiableQ[p || q]`
     → `True`, `SatisfiableQ[Implies[p, q] && p && Not[q]]` → `False`.

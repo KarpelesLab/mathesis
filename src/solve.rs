@@ -35,7 +35,11 @@ pub fn solve_form(head: &str, args: &[Expr]) -> EResult<Value> {
             } else {
                 Domain::Integers
             };
-            find_instance(&args[0], &wanted, domain)
+            if head == "Solve" {
+                solve_all(&args[0], &wanted, domain)
+            } else {
+                find_instance(&args[0], &wanted, domain)
+            }
         }
         "Maximize" | "Minimize" => {
             if !(3..=4).contains(&args.len()) {
@@ -134,6 +138,101 @@ fn find_instance(e: &Expr, wanted: &[String], domain: Domain) -> EResult<Value> 
             "FindInstance: the solver returned `unknown` (the constraint may be nonlinear or use an unsupported theory)",
         ),
     }
+}
+
+/// Enumerate every solution over a discrete domain, by repeatedly finding a
+/// model and blocking it. Capped, and only over the integers — a real region is
+/// dense, so there `Solve` falls back to a single instance.
+const MAX_SOLUTIONS: usize = 256;
+
+fn solve_all(e: &Expr, wanted: &[String], domain: Domain) -> EResult<Value> {
+    if matches!(domain, Domain::Reals) {
+        return match find_instance(e, wanted, domain)? {
+            Value::Rules(r) if r.is_empty() => Ok(Value::List(Vec::new())),
+            v => Ok(Value::List(vec![v])),
+        };
+    }
+
+    let mut vars: BTreeSet<String> = wanted.iter().cloned().collect();
+    let term = translate_top(e, &mut vars)?;
+    let sorts = sorts_of(e);
+
+    let mut session = z3rs::cmd_context::Session::new();
+    let mut setup = format!("(set-logic {})\n", domain.logic());
+    for v in &vars {
+        let sort = match sorts.get(v) {
+            Some(Kind::Bool) => "Bool",
+            _ => domain.sort(),
+        };
+        setup.push_str(&format!("(declare-const {v} {sort})\n"));
+    }
+    setup.push_str(&format!("(assert {term})\n"));
+    let ev = |sess: &mut z3rs::cmd_context::Session, s: &str| {
+        sess.eval(s).map_err(|e| EvalError(format!("solver error: {e}")))
+    };
+    ev(&mut session, &setup)?;
+
+    let getv = format!("(get-value ({}))", wanted.join(" "));
+    let mut solutions: Vec<(Vec<f64>, Vec<(String, Value)>)> = Vec::new();
+    let mut truncated = false;
+    loop {
+        if solutions.len() >= MAX_SOLUTIONS {
+            truncated = true;
+            break;
+        }
+        match ev(&mut session, "(check-sat)")?.first().map(String::as_str) {
+            Some("sat") => {}
+            Some("unsat") => break,
+            _ => {
+                if solutions.is_empty() {
+                    return err(
+                        "Solve: the solver returned `unknown` (the constraint may be nonlinear or use an unsupported theory)",
+                    );
+                }
+                break;
+            }
+        }
+        let vline = ev(&mut session, &getv)?;
+        let pairs = model_sexp_pairs(vline.first().map(String::as_str).unwrap_or(""));
+        if pairs.is_empty() {
+            break;
+        }
+        let clause = pairs
+            .iter()
+            .map(|(n, s)| format!("(= {n} {})", render_str(s)))
+            .collect::<Vec<_>>()
+            .join(" ");
+        ev(&mut session, &format!("(assert (not (and {clause})))"))?;
+
+        let rules: Vec<(String, Value)> =
+            pairs.iter().map(|(n, s)| (n.clone(), sexp_to_value(s))).collect();
+        solutions.push((sort_key(&rules), rules));
+    }
+
+    // Present solutions in a natural (sorted) order — the solver's is internal.
+    solutions.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(core::cmp::Ordering::Equal));
+    let mut out: Vec<Value> = solutions.into_iter().map(|(_, r)| Value::Rules(r)).collect();
+    if truncated {
+        out.push(Value::Text(format!("… (first {MAX_SOLUTIONS} shown)")));
+    }
+    Ok(Value::List(out))
+}
+
+/// A numeric sort key for a solution (first variable primary, then the rest).
+fn sort_key(rules: &[(String, Value)]) -> Vec<f64> {
+    rules
+        .iter()
+        .map(|(_, v)| match v {
+            Value::Bool(b) => {
+                if *b {
+                    1.0
+                } else {
+                    0.0
+                }
+            }
+            _ => value::to_f64(v).unwrap_or(f64::INFINITY),
+        })
+        .collect()
 }
 
 /// `Maximize[obj, constraints, {vars}]` / `Minimize[…]` — optimize a linear
@@ -442,21 +541,32 @@ fn parse_str(line: &str) -> Option<Sexp> {
     parse_sexp(&toks, &mut pos)
 }
 
-/// Parse a `((x 6) (y (/ 1 2)))` model into exact `(name, Value)` pairs.
-fn parse_model(line: &str) -> Vec<(String, Value)> {
+/// Parse a `((x 6) (y (/ 1 2)))` model into `(name, value-s-expression)` pairs.
+fn model_sexp_pairs(line: &str) -> Vec<(String, Sexp)> {
     let pairs = match parse_str(line) {
         Some(Sexp::List(p)) => p,
         _ => return Vec::new(),
     };
     let mut out = Vec::new();
-    for pair in &pairs {
-        if let Sexp::List(kv) = pair {
-            if let [Sexp::Atom(name), value] = &kv[..] {
-                out.push((name.clone(), sexp_to_value(value)));
+    for pair in pairs {
+        if let Sexp::List(mut kv) = pair {
+            if kv.len() == 2 {
+                let val = kv.pop().unwrap();
+                if let Some(Sexp::Atom(name)) = kv.pop() {
+                    out.push((name, val));
+                }
             }
         }
     }
     out
+}
+
+/// Parse a model into exact `(name, Value)` pairs.
+fn parse_model(line: &str) -> Vec<(String, Value)> {
+    model_sexp_pairs(line)
+        .iter()
+        .map(|(n, s)| (n.clone(), sexp_to_value(s)))
+        .collect()
 }
 
 /// The optimum from a `(objectives ((<objective> <value>)))` get-objectives line.

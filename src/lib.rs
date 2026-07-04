@@ -379,6 +379,25 @@ mod tests {
     }
 
     #[test]
+    fn solve_all_solutions() {
+        // Every integer solution, sorted.
+        assert!(
+            out("Solve[x > 0 && x < 5, x]").contains("{{x -> 1}, {x -> 2}, {x -> 3}, {x -> 4}}"),
+            "{}",
+            out("Solve[x > 0 && x < 5, x]")
+        );
+        // A two-variable system → all points.
+        let s = out("Solve[x + y == 4 && x >= 0 && y >= 0, {x, y}]");
+        assert!(s.contains("{x -> 0, y -> 4}") && s.contains("{x -> 4, y -> 0}"), "{s}");
+        // Boolean enumeration.
+        assert!(out("Solve[p && q, {p, q}]").contains("{p -> True, q -> True}"));
+        // No solution → {}.
+        assert!(out("Solve[x == 1 && x == 2, x]").contains("\"text\":\"{}\""));
+        // Reals fall back to a single instance.
+        assert!(out("Solve[2*x == 3, x, Reals]").contains("x -> 3/2"));
+    }
+
+    #[test]
     fn boolean_logic() {
         // Propositional variables are inferred as Bool.
         assert!(out("SatisfiableQ[p || q]").contains("\"text\":\"True\""));
