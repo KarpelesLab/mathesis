@@ -5,7 +5,7 @@
 
 use core::cell::RefCell;
 
-use puremp::{Float, Int, RoundingMode};
+use puremp::{Float, Int, Rational, RoundingMode, lll_reduce, lll_reduce_delta};
 
 use crate::ast::{Expr, Op};
 use crate::error::{EResult, EvalError, err};
@@ -155,6 +155,7 @@ fn call(head: &str, args: &[Value]) -> EResult<Value> {
             arity(head, args, 1)?;
             value::abs(&args[0])
         }
+        "LatticeReduce" => lattice_reduce(head, args),
         "Numerator" => {
             arity(head, args, 1)?;
             match &args[0] {
@@ -260,6 +261,64 @@ fn sqrt(v: &Value) -> EResult<Value> {
         return err("Sqrt of a negative number is not real (complex support is coming)");
     }
     value::real(x.sqrt(WORK_BITS, NEAR))
+}
+
+/// `LatticeReduce[{{...}, ...}]` LLL-reduces an integer lattice basis (rows are
+/// basis vectors), delegating to `puremp`. An optional second argument is the
+/// reduction parameter δ ∈ (1/4, 1] (default 3/4).
+fn lattice_reduce(head: &str, args: &[Value]) -> EResult<Value> {
+    let basis = match args.first() {
+        Some(v) => int_matrix(v)?,
+        None => return err(format!("{head} expects a list of integer vectors")),
+    };
+
+    let reduced = match args.len() {
+        1 => lll_reduce(&basis),
+        2 => {
+            let delta = value::to_rational(&args[1])
+                .map_err(|_| EvalError("LatticeReduce: delta must be a rational".into()))?;
+            let low = Rational::new(Int::from(1), Int::from(4));
+            let high = Rational::from_integer(Int::from(1));
+            if !(delta > low && delta <= high) {
+                return err("LatticeReduce: delta must be in the range (1/4, 1]");
+            }
+            lll_reduce_delta(&basis, &delta)
+        }
+        _ => return err(format!("{head} expects 1 or 2 arguments, got {}", args.len())),
+    };
+
+    Ok(Value::List(
+        reduced
+            .into_iter()
+            .map(|row| Value::List(row.into_iter().map(Value::Int).collect()))
+            .collect(),
+    ))
+}
+
+/// Read a `{{…}, …}` list-of-lists as an integer matrix, checking that it is
+/// non-empty, rectangular, and integer-valued.
+fn int_matrix(v: &Value) -> EResult<Vec<Vec<Int>>> {
+    let rows = match v {
+        Value::List(rows) => rows,
+        _ => return err("expected a list of integer vectors, e.g. {{1, 0}, {0, 1}}"),
+    };
+    if rows.is_empty() {
+        return err("the basis must have at least one vector");
+    }
+    let mut out: Vec<Vec<Int>> = Vec::with_capacity(rows.len());
+    for row in rows {
+        let entries = match row {
+            Value::List(e) => e,
+            _ => return err("each basis vector must be a list, e.g. {1, 2, 3}"),
+        };
+        if let Some(first) = out.first() {
+            if entries.len() != first.len() {
+                return err("all basis vectors must have the same length");
+            }
+        }
+        out.push(entries.iter().map(value::as_int).collect::<EResult<Vec<_>>>()?);
+    }
+    Ok(out)
 }
 
 fn factor(n: &Int) -> EResult<Value> {

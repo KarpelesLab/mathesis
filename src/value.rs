@@ -56,11 +56,11 @@ pub fn from_rational(r: Rational) -> Value {
     }
 }
 
-fn to_rational(v: &Value) -> EResult<Rational> {
+pub fn to_rational(v: &Value) -> EResult<Rational> {
     match v {
         Value::Int(n) => Ok(Rational::from_integer(n.clone())),
         Value::Ratio(r) => Ok(r.clone()),
-        _ => err("expected a number"),
+        _ => err("expected an exact (integer or rational) number"),
     }
 }
 

@@ -71,9 +71,11 @@ postfix `!`, parentheses, `{lists}`, function calls `Head[args]`, and `%` for th
 previous result.
 
 Builtins: `Factor`, `GCD`, `LCM`, `Factorial`, `Binomial`, `Fibonacci`,
-`PrimeQ`, `Sqrt`, `Power`, `Abs`, `Numerator`, `Denominator`, `N`, and the
-constants/transcendentals `Pi`, `E`, `Sin`, `Cos`, `Tan`, `ArcTan`, `Exp`,
-`Log` (`Log[x]` natural, `Log[b, x]` base `b`).
+`PrimeQ`, `Sqrt`, `Power`, `Abs`, `Numerator`, `Denominator`, `N`,
+`LatticeReduce` (LLL reduction of an integer basis, `LatticeReduce[{{…}, …}]`,
+optional second argument δ ∈ (1/4, 1]), and the constants/transcendentals `Pi`,
+`E`, `Sin`, `Cos`, `Tan`, `ArcTan`, `Exp`, `Log` (`Log[x]` natural, `Log[b, x]`
+base `b`).
 
 ## Sharing
 

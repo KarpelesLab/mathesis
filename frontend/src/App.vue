@@ -43,7 +43,6 @@ let toastTimer: ReturnType<typeof setTimeout> | undefined
 const examples = [
   '2^128',
   '1/3 + 1/3 + 1/3',
-  '(1 + 1/2)^10',
   'Factor[360]',
   '20!',
   'Fibonacci[100]',
@@ -51,6 +50,7 @@ const examples = [
   'N[Pi, 50]',
   'Sqrt[2]',
   'Sin[Pi/4]',
+  'LatticeReduce[{{1, 1, 1}, {-1, 0, 2}, {3, 5, 6}}]',
 ]
 
 onMounted(async () => {

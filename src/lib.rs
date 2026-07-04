@@ -155,6 +155,20 @@ mod tests {
     }
 
     #[test]
+    fn lattice_reduce() {
+        // Reduces an integer basis; result is a list of vectors.
+        let r = out("LatticeReduce[{{1, 1, 1}, {-1, 0, 2}, {3, 5, 6}}]");
+        assert!(r.contains("\"ok\":true"), "{r}");
+        assert!(r.contains("{"), "{r}");
+        // A custom reduction parameter is accepted.
+        assert!(out("LatticeReduce[{{12, 2}, {13, 4}}, 99/100]").contains("\"ok\":true"));
+        // Shape/type/range errors are reported clearly.
+        assert!(out("LatticeReduce[{{1, 2}, {3}}]").contains("same length"));
+        assert!(out("LatticeReduce[{1, 2, 3}]").contains("\"ok\":false"));
+        assert!(out("LatticeReduce[{{1, 0}, {0, 1}}, 2]").contains("(1/4, 1]"));
+    }
+
+    #[test]
     fn errors_are_reported() {
         assert!(out("1/0").contains("\"ok\":false"));
         assert!(out("Foo[1]").contains("unknown function"));
