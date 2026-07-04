@@ -339,12 +339,13 @@ mod tests {
 
     #[test]
     fn large_reals_use_scientific() {
-        // Sqrt of a big non-square: the decimal approximation is scientific,
-        // not a 1000-character run of zeros.
+        // Sqrt of a huge non-square falls back to a real in scientific notation
+        // (no unreadable √ over a 158-digit radicand, no wall of zeros).
         let r = out("Sqrt[100!]");
-        assert!(r.contains("\"approx\":\"9.66054943799493e78\""), "{r}");
-        // Ordinary reals keep their plain decimal form.
-        assert!(out("Sqrt[2]").contains("1.4142135623730951"), "{}", out("Sqrt[2]"));
+        assert!(r.contains("9.66054943799493e78") && !r.contains("sqrt"), "{r}");
+        // Small radicands stay exact and symbolic.
+        let s2 = out("Sqrt[2]");
+        assert!(s2.contains("\\\\sqrt{2}") && s2.contains("1.4142135623730951"), "{s2}");
     }
 
     #[test]

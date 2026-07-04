@@ -603,16 +603,22 @@ fn sqrt(v: &Value) -> EResult<Value> {
             // Otherwise an inexact complex root.
             return value::from_complex_float(value::complex_float(v)?.sqrt());
         }
-        // A perfect square is exact; a non-square integer is kept exact *and*
-        // symbolic (√n), with its decimal shown alongside.
+        // A perfect square is exact.
         if let Some(root) = n.sqrt_exact() {
             return Ok(Value::Int(root));
         }
-        return Ok(Value::Sym {
-            text: format!("Sqrt[{n}]"),
-            tex: format!("\\sqrt{{{n}}}"),
-            val: Float::from_int(n, WORK_BITS, NEAR).sqrt(WORK_BITS, NEAR),
-        });
+        let approx = Float::from_int(n, WORK_BITS, NEAR).sqrt(WORK_BITS, NEAR);
+        // A small non-square is kept exact *and* symbolic (√n), with its decimal
+        // alongside. A huge radicand can't render legibly under a radical, so it
+        // falls back to the real (scientific) value.
+        if n.bit_len() <= 64 {
+            return Ok(Value::Sym {
+                text: format!("Sqrt[{n}]"),
+                tex: format!("\\sqrt{{{n}}}"),
+                val: approx,
+            });
+        }
+        return value::real(approx);
     }
     // Complex argument, or a negative real → a complex square root.
     if is_cplx(v) {
