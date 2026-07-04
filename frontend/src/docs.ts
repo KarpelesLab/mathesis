@@ -140,6 +140,14 @@ export const CATEGORIES: Category[] = [
     ],
   },
   {
+    id: 'plotting',
+    title: t('Plotting', 'Tracés', 'グラフ描画'),
+    fns: [
+      { name: 'Plot', syntax: 'Plot[expr, {x, a, b}]', examples: ['Plot[Sin[x], {x, 0, 2*Pi}]', 'Plot[{Sin[x], Cos[x]}, {x, -Pi, Pi}]'], desc: t('Plot a function of one variable over a range (a list plots several curves).', "Trace une fonction d'une variable sur un intervalle (une liste trace plusieurs courbes).", '1 変数関数を区間上に描画（リストで複数曲線）。') },
+      { name: 'Plot3D', syntax: 'Plot3D[expr, {x, a, b}, {y, c, d}]', examples: ['Plot3D[Sin[x]*Cos[y], {x, -3, 3}, {y, -3, 3}]'], desc: t('Surface plot of a function of two variables — drag to rotate.', 'Tracé de surface pour une fonction de deux variables — faites glisser pour tourner.', '2 変数関数の曲面を描画。ドラッグで回転。') },
+    ],
+  },
+  {
     id: 'solving',
     title: t('Solving & logic', 'Résolution et logique', '求解・論理'),
     fns: [

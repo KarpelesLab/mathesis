@@ -101,6 +101,10 @@ Builtins (all delegating to `puremp`):
   `Dot`, `MatrixRank`, `LinearSolve`, `IdentityMatrix`; `LatticeReduce` (LLL
   reduction of an integer basis, optional second argument δ ∈ (1/4, 1]).
   Rectangular list-of-lists render as bracketed matrices.
+- **Plotting** — `Plot[expr, {x, a, b}]` draws a 2D curve (a list of expressions
+  plots several at once); `Plot3D[expr, {x, a, b}, {y, c, d}]` draws a surface you
+  can drag to rotate. The expression is sampled numerically with the plot
+  variable bound; out-of-domain points become gaps.
 - **Solving / theorem proving** (via [`z3rs`](https://github.com/KarpelesLab/z3rs),
   a pure-Rust Z3 port) —
   - `SatisfiableQ[c]` → `True`/`False`; `FindInstance[c, vars]` and

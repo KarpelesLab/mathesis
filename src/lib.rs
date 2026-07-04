@@ -16,6 +16,7 @@ mod error;
 mod eval;
 mod lexer;
 mod parser;
+mod plot;
 mod solve;
 mod value;
 
@@ -33,7 +34,10 @@ use value::Value;
 pub fn evaluate(input: &str) -> String {
     match run(input) {
         Ok(v) => {
-            if let Some(text) = v.plain_text() {
+            if let Some(g) = v.graphics() {
+                // A Plot/Plot3D payload — the frontend draws it. `g` is raw JSON.
+                format!("{{\"ok\":true,\"graphics\":{g}}}")
+            } else if let Some(text) = v.plain_text() {
                 // Opaque text (string / SMT output) — rendered as monospace.
                 format!("{{\"ok\":true,\"text\":{},\"plain\":true}}", json_string(text))
             } else {
@@ -346,6 +350,17 @@ mod tests {
         // Small radicands stay exact and symbolic.
         let s2 = out("Sqrt[2]");
         assert!(s2.contains("\\\\sqrt{2}") && s2.contains("1.4142135623730951"), "{s2}");
+    }
+
+    #[test]
+    fn plotting() {
+        let p = out("Plot[Sin[x], {x, 0, 2*Pi}]");
+        assert!(p.contains("\"graphics\"") && p.contains("plot2d"), "{p}");
+        assert!(out("Plot3D[x + y, {x, 0, 1}, {y, 0, 1}]").contains("plot3d"));
+        // The plot variable is only bound inside the plot.
+        assert!(out("x + 1").contains("\"ok\":false"));
+        // An expression that never yields a real over the range errors.
+        assert!(out("Plot[q, {x, 0, 1}]").contains("\"ok\":false"));
     }
 
     #[test]

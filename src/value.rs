@@ -49,6 +49,9 @@ pub enum Value {
     /// Opaque plain text — a string literal, or verbatim solver output from
     /// `SMT[..]`. Rendered as monospace, never typeset as math.
     Text(String),
+    /// A serialized graphics payload (JSON) produced by `Plot`/`Plot3D`,
+    /// rendered by the frontend rather than typeset.
+    Graphics(String),
     /// A display-only decimal string produced by `N[..]`; not fed back into
     /// arithmetic.
     Decimal(String),
@@ -281,6 +284,16 @@ fn is_inexact(v: &Value) -> bool {
     matches!(v, Value::Real(_) | Value::Sym { .. })
 }
 
+/// A real value as an `f64` for plotting; `None` for non-real (complex) values.
+pub fn to_f64(v: &Value) -> Option<f64> {
+    match v {
+        Value::Int(_) | Value::Ratio(_) | Value::Real(_) | Value::Sym { .. } => {
+            to_float(v).ok().map(|f| f.to_f64())
+        }
+        _ => None,
+    }
+}
+
 /// Wrap a freshly computed real, turning a non-finite result (an out-of-domain
 /// call such as `Log[-1]`) into a readable error instead of a `NaN`. This is the
 /// canonical constructor for real results from `eval`'s transcendental builtins.
@@ -447,6 +460,7 @@ impl Value {
             Value::Sym { text, .. } => text.clone(),
             Value::Cplx(c) => complex_render(c, false),
             Value::CplxReal(c) => complex_render_float(c, false),
+            Value::Graphics(_) => "«graphics»".to_string(),
             Value::Text(s) => s.clone(),
             Value::Bool(b) => if *b { "True" } else { "False" }.to_string(),
             Value::Decimal(s) => s.clone(),
@@ -491,6 +505,7 @@ impl Value {
             Value::Sym { tex, .. } => tex.clone(),
             Value::Cplx(c) => complex_render(c, true),
             Value::CplxReal(c) => complex_render_float(c, true),
+            Value::Graphics(_) => "«graphics»".to_string(),
             // Not typeset — the frontend renders text results as monospace via
             // the `plain` flag; this arm exists only for completeness.
             Value::Text(s) => s.clone(),
@@ -535,6 +550,14 @@ impl Value {
     pub fn plain_text(&self) -> Option<&str> {
         match self {
             Value::Text(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    /// For `Plot`/`Plot3D` results, the JSON graphics payload the frontend draws.
+    pub fn graphics(&self) -> Option<&str> {
+        match self {
+            Value::Graphics(s) => Some(s),
             _ => None,
         }
     }

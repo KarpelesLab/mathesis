@@ -28,6 +28,34 @@ fn get_last() -> EResult<Value> {
     })
 }
 
+thread_local! {
+    static ENV: RefCell<Vec<(String, Value)>> = const { RefCell::new(Vec::new()) };
+}
+
+fn lookup(name: &str) -> Option<Value> {
+    ENV.with(|e| {
+        e.borrow()
+            .iter()
+            .rev()
+            .find(|(n, _)| n == name)
+            .map(|(_, v)| v.clone())
+    })
+}
+
+/// Evaluate `expr` with extra variable bindings in scope. Used by `Plot` to bind
+/// the plot variable to each sample point.
+pub fn eval_bound(expr: &Expr, bindings: Vec<(String, Value)>) -> EResult<Value> {
+    let n = bindings.len();
+    ENV.with(|e| e.borrow_mut().extend(bindings));
+    let r = eval(expr);
+    ENV.with(|e| {
+        let mut b = e.borrow_mut();
+        let len = b.len();
+        b.truncate(len - n);
+    });
+    r
+}
+
 pub fn eval(e: &Expr) -> EResult<Value> {
     match e {
         Expr::Int(s) => Int::from_str_radix(s, 10)
@@ -65,6 +93,11 @@ pub fn eval(e: &Expr) -> EResult<Value> {
         {
             crate::solve::solve_form(head, args)
         }
+        // Plot forms hold their arguments — the expression is sampled over a
+        // range with the plot variable bound, not evaluated up front.
+        Expr::Call(head, args) if matches!(head.as_str(), "Plot" | "Plot3D") => {
+            crate::plot::plot_form(head, args)
+        }
         Expr::Call(head, args) => {
             let vs = args.iter().map(eval).collect::<EResult<Vec<_>>>()?;
             call(head, &vs)
@@ -89,6 +122,9 @@ fn decimal_literal(int: &str, frac: &str) -> EResult<Value> {
 /// Named constants. Irrational constants evaluate to a real at working
 /// precision; `N[Pi, d]` then renders as many digits as requested.
 fn symbol(name: &str) -> EResult<Value> {
+    if let Some(v) = lookup(name) {
+        return Ok(v);
+    }
     match name {
         "Pi" => Ok(Value::Sym {
             text: "Pi".into(),

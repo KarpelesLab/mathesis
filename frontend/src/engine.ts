@@ -13,9 +13,15 @@ export interface EvalResult {
   approx?: string
   /** When set, `text` is opaque output (string / SMT) — render as monospace, not math. */
   plain?: boolean
+  /** A Plot/Plot3D payload to draw (present for graphics results). */
+  graphics?: Graphics
   /** Human-readable message (present when not ok). */
   error?: string
 }
+
+export type Graphics =
+  | { kind: 'plot2d'; var: string; xmin: number; xmax: number; series: { points: [number, number | null][] }[] }
+  | { kind: 'plot3d'; xmin: number; xmax: number; ymin: number; ymax: number; z: (number | null)[][] }
 
 export class TimeoutError extends Error {
   constructor(public readonly ms: number) {

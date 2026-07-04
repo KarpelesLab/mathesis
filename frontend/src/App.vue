@@ -3,6 +3,7 @@ import { nextTick, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Editor from './components/Editor.vue'
 import MathOutput from './components/MathOutput.vue'
+import Graphics from './components/Graphics.vue'
 import DocsPanel from './components/DocsPanel.vue'
 import LangSwitch from './components/LangSwitch.vue'
 import {
@@ -51,6 +52,7 @@ const examples = [
   '1/3 + 1/3 + 1/3',
   'Factor[360]',
   'N[Pi, 50]',
+  'Plot[Sin[x], {x, 0, 2*Pi}]',
   '(1 + I)^2',
   'Sqrt[-4]',
   'Det[{{1, 2}, {3, 4}}]',
@@ -258,7 +260,8 @@ async function shareNotebook() {
                 </button>
               </span>
               <template v-else-if="entry.result">
-                <div v-if="isHuge(entry.result)" class="huge">
+                <Graphics v-if="entry.result.graphics" :data="entry.result.graphics" />
+                <div v-else-if="isHuge(entry.result)" class="huge">
                   <code>{{ preview(entry.result.text!) }}</code>
                   <span class="huge-note">{{ entry.result.text!.length.toLocaleString() }} characters — truncated for display</span>
                 </div>

@@ -412,6 +412,62 @@ kbd {
   overflow-x: auto;
 }
 
+/* plots (Plot / Plot3D) */
+.graphics {
+  margin-top: 0.35rem;
+  max-width: 100%;
+}
+.plot2d {
+  width: 100%;
+  max-width: 640px;
+  height: auto;
+  background: var(--slate-raised);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+}
+.plot2d .plot-bg {
+  fill: transparent;
+}
+.plot2d .grid {
+  stroke: var(--rule-soft);
+  stroke-width: 1;
+}
+.plot2d .axis {
+  stroke: var(--rule);
+  stroke-width: 1.4;
+}
+.plot2d .curve {
+  fill: none;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.plot2d .tick {
+  fill: var(--dust);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.plot2d .tick-x {
+  text-anchor: middle;
+}
+.plot2d .tick-y {
+  text-anchor: end;
+}
+.plot3d {
+  display: block;
+  width: 100%;
+  max-width: 640px;
+  height: 380px;
+  background: var(--slate-raised);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  cursor: grab;
+  touch-action: none;
+}
+.plot3d:active {
+  cursor: grabbing;
+}
+
 /* the decimal approximation shown beneath an exact result */
 .approx {
   margin-top: 0.4rem;
