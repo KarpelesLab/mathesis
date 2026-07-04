@@ -5,11 +5,11 @@
 
 use core::cell::RefCell;
 
-use puremp::Int;
+use puremp::{Float, Int, RoundingMode};
 
 use crate::ast::{Expr, Op};
 use crate::error::{EResult, EvalError, err};
-use crate::value::{self, Value};
+use crate::value::{self, NEAR, Value, WORK_BITS};
 
 thread_local! {
     static LAST: RefCell<Option<Value>> = const { RefCell::new(None) };
@@ -33,7 +33,7 @@ pub fn eval(e: &Expr) -> EResult<Value> {
             .map(Value::Int)
             .map_err(|_| EvalError(format!("invalid integer literal `{s}`"))),
         Expr::Decimal { int, frac } => decimal_literal(int, frac),
-        Expr::Symbol(s) => err(format!("undefined symbol `{s}`")),
+        Expr::Symbol(s) => symbol(s),
         Expr::Last => get_last(),
         Expr::Neg(x) => value::neg(&eval(x)?),
         Expr::Factorial(x) => factorial(&eval(x)?),
@@ -67,6 +67,16 @@ fn decimal_literal(int: &str, frac: &str) -> EResult<Value> {
         .map_err(|_| EvalError(format!("invalid decimal literal `{int}.{frac}`")))?;
     let den = Int::from(10).pow(frac.len() as u32);
     Ok(value::from_rational(puremp::Rational::new(num, den)))
+}
+
+/// Named constants. Irrational constants evaluate to a real at working
+/// precision; `N[Pi, d]` then renders as many digits as requested.
+fn symbol(name: &str) -> EResult<Value> {
+    match name {
+        "Pi" => value::real(Float::pi(WORK_BITS, NEAR)),
+        "E" => value::real(Float::e(WORK_BITS, NEAR)),
+        _ => err(format!("undefined symbol `{name}`")),
+    }
 }
 
 fn factorial(v: &Value) -> EResult<Value> {
@@ -121,8 +131,14 @@ fn call(head: &str, args: &[Value]) -> EResult<Value> {
         }
         "Sqrt" => {
             arity(head, args, 1)?;
-            sqrt(&value::as_int(&args[0])?)
+            sqrt(&args[0])
         }
+        "Sin" => real_unary(head, args, Float::sin),
+        "Cos" => real_unary(head, args, Float::cos),
+        "Tan" => real_unary(head, args, Float::tan),
+        "ArcTan" => real_unary(head, args, Float::atan),
+        "Exp" => real_unary(head, args, Float::exp),
+        "Log" => log(head, args),
         "Power" => {
             arity(head, args, 2)?;
             value::pow(&args[0], &args[1])
@@ -156,12 +172,17 @@ fn call(head: &str, args: &[Value]) -> EResult<Value> {
             } else {
                 10
             };
-            let r = match &args[0] {
-                Value::Int(n) => puremp::Rational::from_integer(n.clone()),
-                Value::Ratio(r) => r.clone(),
-                _ => return err("N expects a number"),
-            };
-            Ok(Value::Decimal(value::decimal_string(&r, digits)))
+            match &args[0] {
+                Value::Int(n) => {
+                    let r = puremp::Rational::from_integer(n.clone());
+                    Ok(Value::Decimal(value::decimal_string(&r, digits)))
+                }
+                Value::Ratio(r) => Ok(Value::Decimal(value::decimal_string(r, digits))),
+                // A real is only backed to ~300 digits (see `WORK_BITS`); asking
+                // for more would print rounding noise, so cap it there.
+                Value::Real(f) => Ok(Value::Decimal(value::real_decimal(f, digits.min(300)))),
+                _ => err("N expects a number"),
+            }
         }
         _ => err(format!("unknown function `{head}`")),
     }
@@ -178,14 +199,50 @@ fn fold_ints(head: &str, args: &[Value], f: impl Fn(&Int, &Int) -> Int) -> EResu
     Ok(Value::Int(acc))
 }
 
-fn sqrt(n: &Int) -> EResult<Value> {
-    if n.is_negative() {
+/// Apply an arbitrary-precision `Float` method (`Sin`, `Exp`, …) to one numeric
+/// argument, returning a real.
+fn real_unary(
+    head: &str,
+    args: &[Value],
+    f: impl Fn(&Float, u64, RoundingMode) -> Float,
+) -> EResult<Value> {
+    arity(head, args, 1)?;
+    let x = value::to_float(&args[0])?;
+    value::real(f(&x, WORK_BITS, NEAR))
+}
+
+/// `Log[x]` is the natural logarithm; `Log[b, x]` is the logarithm base `b`.
+fn log(head: &str, args: &[Value]) -> EResult<Value> {
+    match args.len() {
+        1 => value::real(value::to_float(&args[0])?.ln(WORK_BITS, NEAR)),
+        2 => {
+            let base = value::to_float(&args[0])?.ln(WORK_BITS, NEAR);
+            if base.is_zero() {
+                return err("Log base must not be 1");
+            }
+            let x = value::to_float(&args[1])?.ln(WORK_BITS, NEAR);
+            value::real(x.div(&base, WORK_BITS, NEAR))
+        }
+        _ => err(format!("{head} expects 1 or 2 arguments, got {}", args.len())),
+    }
+}
+
+fn sqrt(v: &Value) -> EResult<Value> {
+    // Stay exact when the argument is a perfect-square integer.
+    if let Value::Int(n) = v {
+        if n.is_negative() {
+            return err("Sqrt of a negative number is not real (complex support is coming)");
+        }
+        if let Some(root) = n.sqrt_exact() {
+            return Ok(Value::Int(root));
+        }
+    }
+    // Otherwise, an arbitrary-precision real approximation.
+    let x = value::to_float(v)?;
+    if x.is_sign_negative() {
         return err("Sqrt of a negative number is not real (complex support is coming)");
     }
-    match n.sqrt_exact() {
-        Some(root) => Ok(Value::Int(root)),
-        None => err("Sqrt is irrational here; wrap in N[..] for a decimal (exact irrationals coming)"),
-    }
+    value::real(x.sqrt(WORK_BITS, NEAR))
 }
 
 fn factor(n: &Int) -> EResult<Value> {

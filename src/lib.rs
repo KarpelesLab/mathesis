@@ -118,6 +118,22 @@ mod tests {
     }
 
     #[test]
+    fn constants_and_reals() {
+        // Constants render at a friendly default precision…
+        assert!(out("Pi").contains("3.14159"), "{}", out("Pi"));
+        assert!(out("E").contains("2.71828"), "{}", out("E"));
+        // …and N[..] gives as many digits as asked.
+        assert!(out("N[Pi, 20]").contains("3.14159265358979"), "{}", out("N[Pi, 20]"));
+        // Irrationals become reals; a real is contagious.
+        assert!(out("Sqrt[2]").contains("1.41421"), "{}", out("Sqrt[2]"));
+        assert!(out("2^(1/2)").contains("1.41421"), "{}", out("2^(1/2)"));
+        assert!(out("Sin[0]").contains("\"text\":\"0\""), "{}", out("Sin[0]"));
+        // But exact stays exact.
+        assert!(out("Sqrt[16]").contains("\"text\":\"4\""), "{}", out("Sqrt[16]"));
+        assert!(out("1/3 + 1/3 + 1/3").contains("\"text\":\"1\""));
+    }
+
+    #[test]
     fn errors_are_reported() {
         assert!(out("1/0").contains("\"ok\":false"));
         assert!(out("Foo[1]").contains("unknown function"));

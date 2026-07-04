@@ -48,14 +48,27 @@ Exact evaluation of a numeric core:
 | `Fibonacci[100]` | `354224848179261915075` |
 | `PrimeQ[2^61 - 1]` | `True` |
 | `Sqrt[152399025]` | `12345` |
-| `N[22/7, 20]` | `3.14285714285714285714` |
+| `Pi` | `3.141592653589793` |
+| `N[Pi, 40]` | `3.1415926535897932384626433832795028841972` |
+| `Sqrt[2]` | `1.4142135623730951` |
+| `Sin[Pi/4]` | `0.7071067811865476` |
+
+Two numeric layers, and results flow between them automatically:
+
+- **exact** — integers and rationals, kept in lowest terms.
+- **real** — an arbitrary-precision approximation for irrational results (`Pi`,
+  `Sqrt[2]`, `Sin[1]`, …). Reals are *contagious*: `1/3 + 1/3` stays exact `1`,
+  but `1/3 + Pi` becomes a real. Reals show ~16 digits by default; `N[x, d]`
+  shows `d`.
 
 Syntax supported: integer & exact-decimal literals, `+ - * / ^`, unary minus,
 postfix `!`, parentheses, `{lists}`, function calls `Head[args]`, and `%` for the
 previous result.
 
 Builtins: `Factor`, `GCD`, `LCM`, `Factorial`, `Binomial`, `Fibonacci`,
-`PrimeQ`, `Sqrt`, `Power`, `Abs`, `Numerator`, `Denominator`, `N`.
+`PrimeQ`, `Sqrt`, `Power`, `Abs`, `Numerator`, `Denominator`, `N`, and the
+constants/transcendentals `Pi`, `E`, `Sin`, `Cos`, `Tan`, `ArcTan`, `Exp`,
+`Log` (`Log[x]` natural, `Log[b, x]` base `b`).
 
 ## Sharing
 
@@ -111,12 +124,6 @@ cargo test
 ```
 
 [`wasm-pack`]: https://rustwasm.github.io/wasm-pack/
-
-## Enabling GitHub Pages
-
-The deploy job publishes with the modern Pages/OIDC flow. In the repository
-settings, set **Settings → Pages → Build and deployment → Source** to
-**GitHub Actions** once; every push to `master` then redeploys automatically.
 
 ## License
 

@@ -46,11 +46,11 @@ const examples = [
   '(1 + 1/2)^10',
   'Factor[360]',
   '20!',
-  'GCD[462, 1071]',
   'Fibonacci[100]',
   'PrimeQ[2^61 - 1]',
-  'Sqrt[152399025]',
-  'N[22/7, 20]',
+  'N[Pi, 50]',
+  'Sqrt[2]',
+  'Sin[Pi/4]',
 ]
 
 onMounted(async () => {
