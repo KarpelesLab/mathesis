@@ -65,7 +65,7 @@ onMounted(() => {
       doc: '',
       extensions: [
         history(),
-        placeholder('Type an expression…  e.g.  2^128 · 1/3 + 1/3 · Factor[360] · Sqrt[144]'),
+        placeholder('Type an expression…'),
         keymap.of([
           // Enter evaluates; Shift-Enter inserts a newline for multi-line input.
           { key: 'Enter', run: submit },
