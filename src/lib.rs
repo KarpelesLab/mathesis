@@ -31,11 +31,18 @@ use value::Value;
 #[wasm_bindgen]
 pub fn evaluate(input: &str) -> String {
     match run(input) {
-        Ok(v) => format!(
-            "{{\"ok\":true,\"text\":{},\"tex\":{}}}",
-            json_string(&v.to_text()),
-            json_string(&v.to_tex()),
-        ),
+        Ok(v) => {
+            let approx = match v.approx() {
+                Some(a) => format!(",\"approx\":{}", json_string(&a)),
+                None => String::new(),
+            };
+            format!(
+                "{{\"ok\":true,\"text\":{},\"tex\":{}{}}}",
+                json_string(&v.to_text()),
+                json_string(&v.to_tex()),
+                approx,
+            )
+        }
         Err(e) => format!("{{\"ok\":false,\"error\":{}}}", json_string(&e.0)),
     }
 }
@@ -118,17 +125,31 @@ mod tests {
     }
 
     #[test]
-    fn constants_and_reals() {
-        // Constants render at a friendly default precision…
-        assert!(out("Pi").contains("3.14159"), "{}", out("Pi"));
-        assert!(out("E").contains("2.71828"), "{}", out("E"));
-        // …and N[..] gives as many digits as asked.
+    fn exact_preferred_with_approx() {
+        // Constants stay symbolic (π) and carry a decimal approximation.
+        let pi = out("Pi");
+        assert!(pi.contains("\\\\pi"), "{pi}");
+        assert!(pi.contains("\"approx\""), "{pi}");
+        assert!(pi.contains("3.141592653589793"), "{pi}");
+
+        // Sqrt of a non-square stays exact & symbolic: √2 with its decimal.
+        let s2 = out("Sqrt[2]");
+        assert!(s2.contains("\\\\sqrt{2}"), "{s2}");
+        assert!(s2.contains("1.4142135623730951"), "{s2}");
+
+        // Rationals: exact fraction primary + decimal approximation.
+        let third = out("1/3");
+        assert!(third.contains("\\\\frac{1}{3}"), "{third}");
+        assert!(third.contains("0.3333333333333333"), "{third}");
+
+        // N[..] gives as many digits as asked.
         assert!(out("N[Pi, 20]").contains("3.14159265358979"), "{}", out("N[Pi, 20]"));
-        // Irrationals become reals; a real is contagious.
-        assert!(out("Sqrt[2]").contains("1.41421"), "{}", out("Sqrt[2]"));
-        assert!(out("2^(1/2)").contains("1.41421"), "{}", out("2^(1/2)"));
+
+        // Mixed/irrational arithmetic degrades to a real (no exact form).
+        assert!(out("2 * Pi").contains("6.283185307179586"), "{}", out("2 * Pi"));
         assert!(out("Sin[0]").contains("\"text\":\"0\""), "{}", out("Sin[0]"));
-        // But exact stays exact.
+
+        // Exact stays exact.
         assert!(out("Sqrt[16]").contains("\"text\":\"4\""), "{}", out("Sqrt[16]"));
         assert!(out("1/3 + 1/3 + 1/3").contains("\"text\":\"1\""));
     }

@@ -73,8 +73,16 @@ fn decimal_literal(int: &str, frac: &str) -> EResult<Value> {
 /// precision; `N[Pi, d]` then renders as many digits as requested.
 fn symbol(name: &str) -> EResult<Value> {
     match name {
-        "Pi" => value::real(Float::pi(WORK_BITS, NEAR)),
-        "E" => value::real(Float::e(WORK_BITS, NEAR)),
+        "Pi" => Ok(Value::Sym {
+            text: "Pi".into(),
+            tex: "\\pi".into(),
+            val: Float::pi(WORK_BITS, NEAR),
+        }),
+        "E" => Ok(Value::Sym {
+            text: "E".into(),
+            tex: "e".into(),
+            val: Float::e(WORK_BITS, NEAR),
+        }),
         _ => err(format!("undefined symbol `{name}`")),
     }
 }
@@ -178,9 +186,12 @@ fn call(head: &str, args: &[Value]) -> EResult<Value> {
                     Ok(Value::Decimal(value::decimal_string(&r, digits)))
                 }
                 Value::Ratio(r) => Ok(Value::Decimal(value::decimal_string(r, digits))),
-                // A real is only backed to ~300 digits (see `WORK_BITS`); asking
-                // for more would print rounding noise, so cap it there.
+                // A real/symbolic value is only backed to ~300 digits (see
+                // `WORK_BITS`); asking for more would print rounding noise.
                 Value::Real(f) => Ok(Value::Decimal(value::real_decimal(f, digits.min(300)))),
+                Value::Sym { val, .. } => {
+                    Ok(Value::Decimal(value::real_decimal(val, digits.min(300))))
+                }
                 _ => err("N expects a number"),
             }
         }
@@ -228,16 +239,22 @@ fn log(head: &str, args: &[Value]) -> EResult<Value> {
 }
 
 fn sqrt(v: &Value) -> EResult<Value> {
-    // Stay exact when the argument is a perfect-square integer.
     if let Value::Int(n) = v {
         if n.is_negative() {
             return err("Sqrt of a negative number is not real (complex support is coming)");
         }
+        // A perfect square is exact; a non-square integer is kept exact *and*
+        // symbolic (√n), with its decimal shown alongside.
         if let Some(root) = n.sqrt_exact() {
             return Ok(Value::Int(root));
         }
+        return Ok(Value::Sym {
+            text: format!("Sqrt[{n}]"),
+            tex: format!("\\sqrt{{{n}}}"),
+            val: Float::from_int(n, WORK_BITS, NEAR).sqrt(WORK_BITS, NEAR),
+        });
     }
-    // Otherwise, an arbitrary-precision real approximation.
+    // A rational or real argument → an arbitrary-precision real approximation.
     let x = value::to_float(v)?;
     if x.is_sign_negative() {
         return err("Sqrt of a negative number is not real (complex support is coming)");

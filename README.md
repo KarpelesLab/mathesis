@@ -48,18 +48,23 @@ Exact evaluation of a numeric core:
 | `Fibonacci[100]` | `354224848179261915075` |
 | `PrimeQ[2^61 - 1]` | `True` |
 | `Sqrt[152399025]` | `12345` |
-| `Pi` | `3.141592653589793` |
+| `Pi` | `π` &nbsp; (≈ 3.141592653589793) |
+| `Sqrt[2]` | `√2` &nbsp; (≈ 1.4142135623730951) |
 | `N[Pi, 40]` | `3.1415926535897932384626433832795028841972` |
-| `Sqrt[2]` | `1.4142135623730951` |
 | `Sin[Pi/4]` | `0.7071067811865476` |
 
-Two numeric layers, and results flow between them automatically:
+**Exact is preferred, with the decimal shown alongside.** Results are kept exact
+whenever possible, and anything that isn't a plain integer also shows a decimal
+approximation (`≈ …`):
 
-- **exact** — integers and rationals, kept in lowest terms.
-- **real** — an arbitrary-precision approximation for irrational results (`Pi`,
-  `Sqrt[2]`, `Sin[1]`, …). Reals are *contagious*: `1/3 + 1/3` stays exact `1`,
-  but `1/3 + Pi` becomes a real. Reals show ~16 digits by default; `N[x, d]`
-  shows `d`.
+- **exact** — integers, rationals (in lowest terms), and irrational leaves kept
+  in symbolic form: `Pi` → π, `Sqrt[2]` → √2, each with its decimal beneath.
+- **real** — an arbitrary-precision decimal, used when a result can't be kept
+  exact. It is *contagious*: `1/3 + 1/3` stays exact `1`, but `1/3 + Pi` (and
+  `Sin[1]`, `2·Pi`, …) becomes a real. Reals show ~16 digits; `N[x, d]` shows `d`.
+
+There is no symbolic simplifier yet, so exact irrationals survive only as leaves:
+`Sqrt[2]` stays √2, but `2·Pi` collapses to a decimal.
 
 Syntax supported: integer & exact-decimal literals, `+ - * / ^`, unary minus,
 postfix `!`, parentheses, `{lists}`, function calls `Head[args]`, and `%` for the

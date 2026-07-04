@@ -9,6 +9,8 @@ export interface EvalResult {
   text?: string
   /** TeX form for KaTeX (present when ok). */
   tex?: string
+  /** Decimal approximation to show alongside an exact result (π, √2, a fraction). */
+  approx?: string
   /** Human-readable message (present when not ok). */
   error?: string
 }

@@ -33,6 +33,10 @@ pub enum Value {
     Ratio(Rational),
     /// An arbitrary-precision real approximation (irrational results).
     Real(Float),
+    /// An *exact but irrational* leaf kept in symbolic form for display —
+    /// `Pi` → π, `Sqrt[2]` → √2 — carrying its numeric value for the decimal
+    /// approximation and for when arithmetic must drop to the real path.
+    Sym { text: String, tex: String, val: Float },
     Bool(bool),
     /// A display-only decimal string produced by `N[..]`; not fed back into
     /// arithmetic.
@@ -89,12 +93,15 @@ pub fn to_float(v: &Value) -> EResult<Float> {
         Value::Int(n) => Ok(Float::from_int(n, WORK_BITS, NEAR)),
         Value::Ratio(r) => Ok(Float::from_rational(r, WORK_BITS, NEAR)),
         Value::Real(f) => Ok(f.clone()),
+        Value::Sym { val, .. } => Ok(val.clone()),
         _ => err("expected a number"),
     }
 }
 
-fn is_real(v: &Value) -> bool {
-    matches!(v, Value::Real(_))
+/// Inexact values — reals and symbolic-but-irrational leaves — force the real
+/// path in arithmetic (we keep no symbolic simplifier).
+fn is_inexact(v: &Value) -> bool {
+    matches!(v, Value::Real(_) | Value::Sym { .. })
 }
 
 /// Wrap a freshly computed real, turning a non-finite result (an out-of-domain
@@ -114,7 +121,7 @@ pub fn real(f: Float) -> EResult<Value> {
 // the real path as soon as either operand is a [`Value::Real`].
 
 pub fn add(a: &Value, b: &Value) -> EResult<Value> {
-    if is_real(a) || is_real(b) {
+    if is_inexact(a) || is_inexact(b) {
         real(to_float(a)?.add(&to_float(b)?, WORK_BITS, NEAR))
     } else {
         Ok(from_rational(to_rational(a)?.add(&to_rational(b)?)))
@@ -122,7 +129,7 @@ pub fn add(a: &Value, b: &Value) -> EResult<Value> {
 }
 
 pub fn sub(a: &Value, b: &Value) -> EResult<Value> {
-    if is_real(a) || is_real(b) {
+    if is_inexact(a) || is_inexact(b) {
         real(to_float(a)?.sub(&to_float(b)?, WORK_BITS, NEAR))
     } else {
         Ok(from_rational(to_rational(a)?.sub(&to_rational(b)?)))
@@ -130,7 +137,7 @@ pub fn sub(a: &Value, b: &Value) -> EResult<Value> {
 }
 
 pub fn mul(a: &Value, b: &Value) -> EResult<Value> {
-    if is_real(a) || is_real(b) {
+    if is_inexact(a) || is_inexact(b) {
         real(to_float(a)?.mul(&to_float(b)?, WORK_BITS, NEAR))
     } else {
         Ok(from_rational(to_rational(a)?.mul(&to_rational(b)?)))
@@ -138,7 +145,7 @@ pub fn mul(a: &Value, b: &Value) -> EResult<Value> {
 }
 
 pub fn div(a: &Value, b: &Value) -> EResult<Value> {
-    if is_real(a) || is_real(b) {
+    if is_inexact(a) || is_inexact(b) {
         let fb = to_float(b)?;
         if fb.is_zero() {
             return err("division by zero");
@@ -154,16 +161,16 @@ pub fn div(a: &Value, b: &Value) -> EResult<Value> {
 }
 
 pub fn neg(a: &Value) -> EResult<Value> {
-    if let Value::Real(f) = a {
-        Ok(Value::Real(f.neg()))
+    if is_inexact(a) {
+        Ok(Value::Real(to_float(a)?.neg()))
     } else {
         Ok(from_rational(to_rational(a)?.neg()))
     }
 }
 
 pub fn abs(v: &Value) -> EResult<Value> {
-    if let Value::Real(f) = v {
-        Ok(Value::Real(f.abs()))
+    if is_inexact(v) {
+        Ok(Value::Real(to_float(v)?.abs()))
     } else {
         Ok(from_rational(to_rational(v)?.abs()))
     }
@@ -171,7 +178,7 @@ pub fn abs(v: &Value) -> EResult<Value> {
 
 pub fn pow(base: &Value, exp: &Value) -> EResult<Value> {
     // Exact fast path: an exact base raised to an *integer* exponent stays exact.
-    if !is_real(base) && !is_real(exp) {
+    if !is_inexact(base) && !is_inexact(exp) {
         if let Ok(n) = as_int(exp) {
             let e = to_i64(&n)?;
             if let Value::Int(b) = base {
@@ -209,6 +216,7 @@ impl Value {
             Value::Int(n) => n.to_string(),
             Value::Ratio(r) => format!("{}/{}", r.numerator(), r.denominator()),
             Value::Real(f) => real_string(f),
+            Value::Sym { text, .. } => text.clone(),
             Value::Bool(b) => if *b { "True" } else { "False" }.to_string(),
             Value::Decimal(s) => s.clone(),
             Value::List(xs) => {
@@ -249,6 +257,7 @@ impl Value {
                 }
             }
             Value::Real(f) => real_string(f),
+            Value::Sym { tex, .. } => tex.clone(),
             Value::Bool(b) => format!("\\text{{{}}}", if *b { "True" } else { "False" }),
             Value::Decimal(s) => s.clone(),
             Value::List(xs) => {
@@ -277,6 +286,18 @@ impl Value {
                 }
                 parts.concat()
             }
+        }
+    }
+
+    /// The decimal approximation to show *alongside* an exact result, when it
+    /// adds information. `None` for values whose primary rendering is already
+    /// their best form — integers, reals (already a decimal), booleans, lists,
+    /// factorizations, and `N[..]` output.
+    pub fn approx(&self) -> Option<String> {
+        match self {
+            Value::Ratio(r) => Some(real_string(&Float::from_rational(r, WORK_BITS, NEAR))),
+            Value::Sym { val, .. } => Some(real_string(val)),
+            _ => None,
         }
     }
 }

@@ -347,6 +347,15 @@ kbd {
   color: var(--chalk);
   min-width: 0;
 }
+/* the decimal approximation shown beneath an exact result */
+.approx {
+  margin-top: 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  color: var(--dust);
+  letter-spacing: 0.01em;
+}
+
 .error {
   font-family: var(--font-mono);
   font-size: 0.92rem;

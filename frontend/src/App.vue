@@ -248,11 +248,14 @@ async function shareNotebook() {
                   <code>{{ preview(entry.result.text!) }}</code>
                   <span class="huge-note">{{ entry.result.text!.length.toLocaleString() }} characters — truncated for display</span>
                 </div>
-                <MathOutput
-                  v-else-if="entry.result.ok && entry.result.tex"
-                  :tex="entry.result.tex"
-                />
-                <div v-else class="error">{{ entry.result.error }}</div>
+                <template v-else>
+                  <MathOutput
+                    v-if="entry.result.ok && entry.result.tex"
+                    :tex="entry.result.tex"
+                  />
+                  <div v-else class="error">{{ entry.result.error }}</div>
+                  <div v-if="entry.result.approx" class="approx">≈ {{ entry.result.approx }}</div>
+                </template>
               </template>
             </div>
           </div>
