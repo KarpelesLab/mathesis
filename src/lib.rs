@@ -216,6 +216,21 @@ mod tests {
     }
 
     #[test]
+    fn number_theory_extras() {
+        assert!(out("EulerPhi[10]").contains("\"text\":\"4\""));
+        assert!(out("Divisors[12]").contains("{1, 2, 3, 4, 6, 12}"), "{}", out("Divisors[12]"));
+        assert!(out("DivisorSigma[1, 12]").contains("\"text\":\"28\""));
+        assert!(out("DivisorSigma[0, 12]").contains("\"text\":\"6\""));
+        assert!(out("MoebiusMu[30]").contains("\"text\":\"-1\""));
+        assert!(out("MoebiusMu[4]").contains("\"text\":\"0\""));
+        assert!(out("Radical[12]").contains("\"text\":\"6\""));
+        assert!(out("NextPrime[10]").contains("\"text\":\"11\""));
+        assert!(out("PreviousPrime[10]").contains("\"text\":\"7\""));
+        assert!(out("EulerGamma").contains("0.5772156649"), "{}", out("EulerGamma"));
+        assert!(out("Catalan").contains("0.915965594"), "{}", out("Catalan"));
+    }
+
+    #[test]
     fn matrices() {
         assert!(out("Det[{{1, 2}, {3, 4}}]").contains("\"text\":\"-2\""));
         assert!(out("Transpose[{{1, 2}, {3, 4}}]").contains("{1, 3}"));

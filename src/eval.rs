@@ -104,6 +104,16 @@ fn symbol(name: &str) -> EResult<Value> {
         "I" => Ok(Value::Cplx(Complex::imaginary(Rational::from_integer(Int::from(1))))),
         "True" => Ok(Value::Bool(true)),
         "False" => Ok(Value::Bool(false)),
+        "EulerGamma" => Ok(Value::Sym {
+            text: "EulerGamma".into(),
+            tex: "\\gamma".into(),
+            val: Float::euler_gamma(WORK_BITS, NEAR),
+        }),
+        "Catalan" => Ok(Value::Sym {
+            text: "Catalan".into(),
+            tex: "C".into(),
+            val: Float::catalan(WORK_BITS, NEAR),
+        }),
         _ => err(format!("undefined symbol `{name}`")),
     }
 }
@@ -263,7 +273,36 @@ fn call(head: &str, args: &[Value]) -> EResult<Value> {
         }
         "NextPrime" => {
             arity(head, args, 1)?;
-            Ok(Value::Int(next_prime(&value::as_int(&args[0])?)))
+            Ok(Value::Int(value::as_int(&args[0])?.next_prime()))
+        }
+        "PreviousPrime" => {
+            arity(head, args, 1)?;
+            value::as_int(&args[0])?
+                .prev_prime()
+                .map(Value::Int)
+                .ok_or_else(|| EvalError("PreviousPrime: there is no prime below 2".into()))
+        }
+        "EulerPhi" => {
+            arity(head, args, 1)?;
+            Ok(Value::Int(value::as_int(&args[0])?.euler_phi()))
+        }
+        "Divisors" => {
+            arity(head, args, 1)?;
+            let ds = value::as_int(&args[0])?.divisors();
+            Ok(Value::List(ds.into_iter().map(Value::Int).collect()))
+        }
+        "DivisorSigma" => {
+            arity(head, args, 2)?;
+            let k = value::to_u64(&value::as_int(&args[0])?)?.min(u32::MAX as u64) as u32;
+            Ok(Value::Int(value::as_int(&args[1])?.divisor_sigma(k)))
+        }
+        "MoebiusMu" => {
+            arity(head, args, 1)?;
+            Ok(int_from(value::as_int(&args[0])?.moebius_mu()))
+        }
+        "Radical" => {
+            arity(head, args, 1)?;
+            Ok(Value::Int(value::as_int(&args[0])?.radical()))
         }
         "EvenQ" => {
             arity(head, args, 1)?;
@@ -292,9 +331,7 @@ fn call(head: &str, args: &[Value]) -> EResult<Value> {
         }
         "Round" => {
             arity(head, args, 1)?;
-            let r = as_exact_rational(&args[0])?;
-            let half = Rational::new(Int::from(1), Int::from(2));
-            Ok(Value::Int(r.add(&half).floor()))
+            Ok(Value::Int(as_exact_rational(&args[0])?.round()))
         }
         "IntegerPart" => {
             arity(head, args, 1)?;
@@ -586,26 +623,6 @@ fn power_mod(head: &str, args: &[Value]) -> EResult<Value> {
         Ok(Value::Int(inv.modpow(&b.abs(), &m)))
     } else {
         Ok(Value::Int(a.modpow(&b, &m)))
-    }
-}
-
-/// Smallest prime strictly greater than `n`, found by scanning with the
-/// (delegated) BPSW primality test — no randomness required.
-fn next_prime(n: &Int) -> Int {
-    let two = Int::from(2);
-    if !n.is_positive() || n.is_one() {
-        return two;
-    }
-    // n ≥ 2 here, so the next prime is odd; start at the next odd number.
-    let mut c = n.add(&Int::from(1));
-    if c.is_even() {
-        c = c.add(&Int::from(1));
-    }
-    loop {
-        if c.is_prime_bpsw() {
-            return c;
-        }
-        c = c.add(&two);
     }
 }
 
