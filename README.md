@@ -51,6 +51,15 @@ previous result.
 Builtins: `Factor`, `GCD`, `LCM`, `Factorial`, `Binomial`, `Fibonacci`,
 `PrimeQ`, `Sqrt`, `Power`, `Abs`, `Numerator`, `Denominator`, `N`.
 
+## Sharing
+
+Every computation and the whole notebook are shareable as a self-contained link.
+The inputs are encoded into the URL hash (`#c=…` for one computation, `#n=…` for
+a notebook) — no server is involved — and opening the link replays them locally.
+Use the **Share** button in the header for the whole notebook, or hover a cell
+for its own share button. On supported devices this opens the native share sheet
+(`navigator.share`); otherwise the link is copied to the clipboard.
+
 ## Repository layout
 
 ```

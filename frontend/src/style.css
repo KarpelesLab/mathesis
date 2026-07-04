@@ -110,6 +110,12 @@ body {
   color: var(--muted);
 }
 
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
 .repo {
   font-size: 0.82rem;
   color: var(--muted);
@@ -122,6 +128,101 @@ body {
 .repo:hover {
   color: var(--ink);
   border-color: var(--accent);
+}
+
+.share-nb {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  color: var(--ink);
+  background: linear-gradient(135deg, rgba(139, 124, 255, 0.16), rgba(79, 214, 224, 0.12));
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  padding: 0.4rem 0.8rem;
+  cursor: pointer;
+  transition: box-shadow 0.15s, transform 0.12s, opacity 0.15s;
+}
+.share-nb:hover:not(:disabled) {
+  box-shadow: 0 0 0 3px var(--accent-dim);
+  transform: translateY(-1px);
+}
+.share-nb:disabled {
+  opacity: 0.4;
+  cursor: default;
+  border-color: var(--border);
+}
+
+.ico {
+  width: 1rem;
+  height: 1rem;
+  fill: currentColor;
+}
+
+/* per-cell share affordance, revealed on hover/focus */
+.cell-share {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  color: var(--faint);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(-2px);
+  transition: opacity 0.15s, color 0.15s, border-color 0.15s, transform 0.15s;
+}
+.cell:hover .cell-share,
+.cell-share:focus-visible {
+  opacity: 1;
+  transform: none;
+}
+/* Touch devices have no hover — keep the affordance visible. */
+@media (hover: none) {
+  .cell-share {
+    opacity: 0.7;
+    transform: none;
+  }
+}
+.cell-share:hover {
+  color: var(--accent-2);
+  border-color: var(--accent);
+}
+.cell-share .ico {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+/* toast */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 5.5rem;
+  transform: translateX(-50%);
+  z-index: 20;
+  font-size: 0.85rem;
+  color: var(--ink);
+  background: var(--panel-2);
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  padding: 0.5rem 1rem;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+}
+.toast-enter-active,
+.toast-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.toast-enter-from,
+.toast-leave-to {
+  opacity: 0;
+  transform: translate(-50%, 8px);
 }
 
 /* ---- scroll region ---- */
@@ -197,6 +298,7 @@ kbd {
   gap: 1.6rem;
 }
 .cell {
+  position: relative;
   animation: rise 0.28s ease both;
 }
 @keyframes rise {
