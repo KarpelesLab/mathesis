@@ -60,6 +60,15 @@ Use the **Share** button in the header for the whole notebook, or hover a cell
 for its own share button. On supported devices this opens the native share sheet
 (`navigator.share`); otherwise the link is copied to the clipboard.
 
+## Long-running computations
+
+The engine runs in a **Web Worker**, so the UI never freezes — even on an
+accidental `3000000!`. A computation that exceeds a wall-clock budget (a few
+seconds) is force-stopped by terminating the worker (pure wasm can't be
+interrupted cooperatively), and there's a **Stop** button to abort sooner.
+Results large enough to choke the renderer are shown as truncated text instead
+of typeset math.
+
 ## Repository layout
 
 ```

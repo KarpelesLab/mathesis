@@ -2,7 +2,14 @@
 import { nextTick, onMounted, ref } from 'vue'
 import Editor from './components/Editor.vue'
 import MathOutput from './components/MathOutput.vue'
-import { engineVersion, evaluateInput, type EvalResult } from './engine'
+import {
+  cancelCurrent,
+  CancelledError,
+  engineVersion,
+  evaluateInput,
+  TimeoutError,
+  type EvalResult,
+} from './engine'
 import {
   notebookShareUrl,
   parseShareUrl,
@@ -59,25 +66,50 @@ onMounted(async () => {
   }
 })
 
+// A result whose plain text is this long or longer is not fed to KaTeX — the
+// DOM/typesetting cost of a multi-thousand-digit number would itself freeze the
+// page. We show it as truncated monospace text instead.
+const HUGE_OUTPUT = 4000
+
+async function pushEntry(input: string, result: EvalResult) {
+  counter.value += 1
+  entries.value.push({ n: counter.value, input, result })
+  historyPos.value = entries.value.length
+  await nextTick()
+  scroller.value?.scrollTo({ top: scroller.value.scrollHeight, behavior: 'smooth' })
+}
+
 async function run(input: string) {
+  if (busy.value) return
   busy.value = true
   try {
     const result = await evaluateInput(input)
-    counter.value += 1
-    entries.value.push({ n: counter.value, input, result })
-    historyPos.value = entries.value.length
-    await nextTick()
-    scroller.value?.scrollTo({ top: scroller.value.scrollHeight, behavior: 'smooth' })
+    await pushEntry(input, result)
   } catch (e) {
-    counter.value += 1
-    entries.value.push({
-      n: counter.value,
-      input,
-      result: { ok: false, error: `engine failed to load: ${String(e)}` },
-    })
+    let error: string
+    if (e instanceof TimeoutError) {
+      error = `computation stopped after ${Math.round(e.ms / 1000)}s — try a smaller input`
+    } else if (e instanceof CancelledError) {
+      error = 'computation cancelled'
+    } else {
+      error = `engine error: ${String(e)}`
+    }
+    await pushEntry(input, { ok: false, error })
   } finally {
     busy.value = false
   }
+}
+
+function stop() {
+  cancelCurrent()
+}
+
+function isHuge(r: EvalResult): boolean {
+  return Boolean(r.ok && r.text && r.text.length >= HUGE_OUTPUT)
+}
+
+function preview(text: string): string {
+  return text.length > 2000 ? `${text.slice(0, 2000)}…` : text
 }
 
 function browseHistory(dir: -1 | 1) {
@@ -189,7 +221,14 @@ async function shareNotebook() {
           <div class="io out">
             <span class="prompt out-prompt">Out[{{ entry.n }}]</span>
             <div class="result">
-              <MathOutput v-if="entry.result.ok && entry.result.tex" :tex="entry.result.tex" />
+              <div v-if="isHuge(entry.result)" class="huge">
+                <code>{{ preview(entry.result.text!) }}</code>
+                <span class="huge-note">{{ entry.result.text!.length.toLocaleString() }} characters — truncated for display</span>
+              </div>
+              <MathOutput
+                v-else-if="entry.result.ok && entry.result.tex"
+                :tex="entry.result.tex"
+              />
               <div v-else class="error">{{ entry.result.error }}</div>
             </div>
           </div>
@@ -205,7 +244,8 @@ async function shareNotebook() {
           @submit="run"
           @history="browseHistory"
         />
-        <span class="hint" :class="{ busy }">{{ busy ? '…' : '↵' }}</span>
+        <button v-if="busy" class="stop" title="Stop this computation" @click="stop">Stop</button>
+        <span v-else class="hint">↵</span>
       </div>
     </footer>
 
