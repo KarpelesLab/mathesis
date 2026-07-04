@@ -69,6 +69,14 @@ impl Parser {
             }
 
             let (op, lbp, rbp) = match self.peek() {
+                Tok::PipePipe => (Op::Or, 3, 4),
+                Tok::AmpAmp => (Op::And, 5, 6),
+                Tok::EqEq => (Op::Eq, 7, 8),
+                Tok::BangEq => (Op::Ne, 7, 8),
+                Tok::Lt => (Op::Lt, 7, 8),
+                Tok::Le => (Op::Le, 7, 8),
+                Tok::Gt => (Op::Gt, 7, 8),
+                Tok::Ge => (Op::Ge, 7, 8),
                 Tok::Plus => (Op::Add, 10, 11),
                 Tok::Minus => (Op::Sub, 10, 11),
                 Tok::Star => (Op::Mul, 20, 21),
@@ -168,6 +176,14 @@ fn describe(t: &Tok) -> String {
         Tok::RBrace => "}".into(),
         Tok::Comma => ",".into(),
         Tok::Percent => "%".into(),
+        Tok::EqEq => "==".into(),
+        Tok::BangEq => "!=".into(),
+        Tok::Lt => "<".into(),
+        Tok::Le => "<=".into(),
+        Tok::Gt => ">".into(),
+        Tok::Ge => ">=".into(),
+        Tok::AmpAmp => "&&".into(),
+        Tok::PipePipe => "||".into(),
         Tok::Eof => "end of input".into(),
     }
 }

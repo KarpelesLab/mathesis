@@ -94,13 +94,20 @@ Builtins (all delegating to `puremp`):
   `Dot`, `MatrixRank`, `LinearSolve`, `IdentityMatrix`; `LatticeReduce` (LLL
   reduction of an integer basis, optional second argument δ ∈ (1/4, 1]).
   Rectangular list-of-lists render as bracketed matrices.
-- **Solving / theorem proving** — `SMT["…"]` runs an SMT-LIB 2 script through
-  [`z3rs`](https://github.com/KarpelesLab/z3rs) (a pure-Rust Z3 port) and shows
-  the solver's verbatim output. It decides QF_LIA / QF_LRA / QF_UF / QF_AX /
-  QF_BV and is sound and terminating (a work budget yields `unknown`, never a
-  hang). Example:
-  `SMT["(declare-const x Int)(assert (> x 5))(assert (< x 7))(check-sat)(get-value (x))"]`
-  → `sat` / `((x 6))`.
+- **Solving / theorem proving** (via [`z3rs`](https://github.com/KarpelesLab/z3rs),
+  a pure-Rust Z3 port) —
+  - `SatisfiableQ[c]` → `True`/`False`; `FindInstance[c, vars]` and
+    `Solve[c, vars]` find a satisfying assignment (`{x -> 6, y -> 4}`, or `{}` if
+    none). An optional third argument picks the domain: `Integers` (default) or
+    `Reals`. Constraints use `== != < <= > >= && ||` and the heads `And`, `Or`,
+    `Not`, `Implies`, `Xor` — e.g.
+    `FindInstance[x + y == 10 && x - y == 2, {x, y}]` → `{x -> 6, y -> 4}`.
+    Only *linear* arithmetic is decidable; a nonlinear constraint (a product or
+    power of two unknowns) comes back as a clear "unknown" error.
+  - `SMT["…"]` runs a raw SMT-LIB 2 script and shows the solver's verbatim output
+    (decides QF_LIA / QF_LRA / QF_UF / QF_AX / QF_BV). The engine is sound and
+    terminating: a work budget yields `unknown`, never a hang.
+  - The relational/logical operators also work standalone: `2 < 3` → `True`.
 
 ## Sharing
 

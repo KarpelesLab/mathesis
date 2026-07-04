@@ -24,6 +24,15 @@ pub enum Tok {
     RBrace,
     Comma,
     Percent,
+    // Relational / logical.
+    EqEq,
+    BangEq,
+    Lt,
+    Le,
+    Gt,
+    Ge,
+    AmpAmp,
+    PipePipe,
     Eof,
 }
 
@@ -103,7 +112,55 @@ pub fn lex(src: &str) -> Result<Vec<Tok>, String> {
             b'*' => push(&mut out, &mut i, Tok::Star),
             b'/' => push(&mut out, &mut i, Tok::Slash),
             b'^' => push(&mut out, &mut i, Tok::Caret),
-            b'!' => push(&mut out, &mut i, Tok::Bang),
+            b'!' => {
+                if i + 1 < b.len() && b[i + 1] == b'=' {
+                    out.push(Tok::BangEq);
+                    i += 2;
+                } else {
+                    out.push(Tok::Bang);
+                    i += 1;
+                }
+            }
+            b'=' => {
+                // Accept `==` and a lone `=` as equality (the language has no
+                // assignment, so `=` is unambiguous).
+                i += if i + 1 < b.len() && b[i + 1] == b'=' { 2 } else { 1 };
+                out.push(Tok::EqEq);
+            }
+            b'<' => {
+                if i + 1 < b.len() && b[i + 1] == b'=' {
+                    out.push(Tok::Le);
+                    i += 2;
+                } else {
+                    out.push(Tok::Lt);
+                    i += 1;
+                }
+            }
+            b'>' => {
+                if i + 1 < b.len() && b[i + 1] == b'=' {
+                    out.push(Tok::Ge);
+                    i += 2;
+                } else {
+                    out.push(Tok::Gt);
+                    i += 1;
+                }
+            }
+            b'&' => {
+                if i + 1 < b.len() && b[i + 1] == b'&' {
+                    out.push(Tok::AmpAmp);
+                    i += 2;
+                } else {
+                    return Err("unexpected `&` (did you mean `&&`?)".to_string());
+                }
+            }
+            b'|' => {
+                if i + 1 < b.len() && b[i + 1] == b'|' {
+                    out.push(Tok::PipePipe);
+                    i += 2;
+                } else {
+                    return Err("unexpected `|` (did you mean `||`?)".to_string());
+                }
+            }
             b'(' => push(&mut out, &mut i, Tok::LParen),
             b')' => push(&mut out, &mut i, Tok::RParen),
             b'[' => push(&mut out, &mut i, Tok::LBrack),

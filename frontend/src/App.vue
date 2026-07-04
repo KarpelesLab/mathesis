@@ -50,8 +50,8 @@ const examples = [
   'Det[{{1, 2}, {3, 4}}]',
   'PowerMod[7, 100, 13]',
   'Fibonacci[100]',
+  'FindInstance[x + y == 10 && x - y == 2, {x, y}]',
   'LatticeReduce[{{1, 1, 1}, {-1, 0, 2}, {3, 5, 6}}]',
-  'SMT["(declare-const x Int)(assert (> x 5))(assert (< x 7))(check-sat)(get-value (x))"]',
 ]
 
 onMounted(async () => {

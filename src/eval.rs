@@ -4,6 +4,7 @@
 //! is available to the next.
 
 use core::cell::RefCell;
+use core::cmp::Ordering;
 
 use puremp::{Complex, Float, Int, Matrix, Rational, RoundingMode, lll_reduce, lll_reduce_delta};
 
@@ -47,7 +48,22 @@ pub fn eval(e: &Expr) -> EResult<Value> {
                 Op::Mul => value::mul(&a, &b),
                 Op::Div => value::div(&a, &b),
                 Op::Pow => value::pow(&a, &b),
+                Op::Eq => Ok(Value::Bool(numeric_cmp(&a, &b)? == Ordering::Equal)),
+                Op::Ne => Ok(Value::Bool(numeric_cmp(&a, &b)? != Ordering::Equal)),
+                Op::Lt => Ok(Value::Bool(numeric_cmp(&a, &b)? == Ordering::Less)),
+                Op::Le => Ok(Value::Bool(numeric_cmp(&a, &b)? != Ordering::Greater)),
+                Op::Gt => Ok(Value::Bool(numeric_cmp(&a, &b)? == Ordering::Greater)),
+                Op::Ge => Ok(Value::Bool(numeric_cmp(&a, &b)? != Ordering::Less)),
+                Op::And => Ok(Value::Bool(as_bool(&a)? && as_bool(&b)?)),
+                Op::Or => Ok(Value::Bool(as_bool(&a)? || as_bool(&b)?)),
             }
+        }
+        // Solver forms hold their arguments unevaluated — the constraint is
+        // translated to SMT-LIB, not computed.
+        Expr::Call(head, args)
+            if matches!(head.as_str(), "SatisfiableQ" | "FindInstance" | "Solve") =>
+        {
+            crate::solve::solve_form(head, args)
         }
         Expr::Call(head, args) => {
             let vs = args.iter().map(eval).collect::<EResult<Vec<_>>>()?;
@@ -86,6 +102,8 @@ fn symbol(name: &str) -> EResult<Value> {
         }),
         // The imaginary unit.
         "I" => Ok(Value::Cplx(Complex::imaginary(Rational::from_integer(Int::from(1))))),
+        "True" => Ok(Value::Bool(true)),
+        "False" => Ok(Value::Bool(false)),
         _ => err(format!("undefined symbol `{name}`")),
     }
 }
@@ -618,9 +636,20 @@ fn rat_vec(v: &Value) -> EResult<Vec<Rational>> {
     }
 }
 
+fn numeric_cmp(a: &Value, b: &Value) -> EResult<Ordering> {
+    Ok(as_exact_rational(a)?.cmp(&as_exact_rational(b)?))
+}
+
+fn as_bool(v: &Value) -> EResult<bool> {
+    match v {
+        Value::Bool(b) => Ok(*b),
+        _ => err("expected a boolean (True or False)"),
+    }
+}
+
 /// The exact rational value of any real number, used by `Floor`/`Round`/etc.
 /// For a real/symbolic value this is the exact value of its float approximation.
-fn as_exact_rational(v: &Value) -> EResult<Rational> {
+pub(crate) fn as_exact_rational(v: &Value) -> EResult<Rational> {
     match v {
         Value::Int(n) => Ok(Rational::from_integer(n.clone())),
         Value::Ratio(r) => Ok(r.clone()),

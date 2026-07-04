@@ -9,6 +9,16 @@ pub enum Op {
     Mul,
     Div,
     Pow,
+    // Relational — evaluate to a boolean, or become SMT constraints in a solver.
+    Eq,
+    Ne,
+    Lt,
+    Le,
+    Gt,
+    Ge,
+    // Logical.
+    And,
+    Or,
 }
 
 #[derive(Debug, Clone)]

@@ -16,6 +16,7 @@ mod error;
 mod eval;
 mod lexer;
 mod parser;
+mod solve;
 mod value;
 
 use wasm_bindgen::prelude::*;
@@ -269,6 +270,31 @@ mod tests {
         assert!(out("SMT[5]").contains("expects a string"));
         // A bare string literal renders as plain text.
         assert!(out(r#""hello""#).contains("\"plain\":true"));
+    }
+
+    #[test]
+    fn relational_and_logical() {
+        assert!(out("2 < 3").contains("\"text\":\"True\""));
+        assert!(out("2 == 2").contains("\"text\":\"True\""));
+        assert!(out("5 >= 6").contains("\"text\":\"False\""));
+        assert!(out("1/2 < 2/3").contains("\"text\":\"True\""));
+        assert!(out("True && False").contains("\"text\":\"False\""));
+        assert!(out("True || False").contains("\"text\":\"True\""));
+    }
+
+    #[test]
+    fn solving() {
+        assert!(out("SatisfiableQ[x > 5 && x < 8]").contains("\"text\":\"True\""));
+        assert!(out("SatisfiableQ[x > 5 && x < 3]").contains("\"text\":\"False\""));
+
+        let fi = out("FindInstance[x + y == 10 && x - y == 2, {x, y}]");
+        assert!(fi.contains("x -> 6") && fi.contains("y -> 4"), "{fi}");
+
+        assert!(out("Solve[2*x == 6, x]").contains("x -> 3"), "{}", out("Solve[2*x == 6, x]"));
+        // Unsatisfiable → no instance.
+        assert!(out("FindInstance[x > 5 && x < 5, {x}]").contains("{}"), "{}", out("FindInstance[x > 5 && x < 5, {x}]"));
+        // Reals domain works too.
+        assert!(out("FindInstance[2*x == 3, {x}, Reals]").contains("x ->"), "{}", out("FindInstance[2*x == 3, {x}, Reals]"));
     }
 
     #[test]
