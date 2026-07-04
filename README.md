@@ -78,13 +78,14 @@ Builtins (all delegating to `puremp`):
   `MoebiusMu`, `Radical`, `GCD`, `LCM`, `PrimeQ`, `NextPrime`, `PreviousPrime`,
   `Factorial`, `Binomial`, `Multinomial`, `Fibonacci`, `LucasL`, `Mod`,
   `Quotient`, `PowerMod`, `ModularInverse`, `ExtendedGCD`, `JacobiSymbol`,
-  `ChineseRemainder`, `SqrtMod`, `EvenQ`, `OddQ`, `IntegerQ`.
+  `ChineseRemainder`, `SqrtMod`, `DiscreteLog`, `EvenQ`, `OddQ`, `IntegerQ`.
 - **Rationals** — `Numerator`, `Denominator`, `ContinuedFraction`,
   `FromContinuedFraction`, `Rationalize`.
 - **Constants & transcendentals** — `Pi`, `E`, `EulerGamma`, `Catalan`; `Exp`,
   `Log` (`Log[x]` natural, `Log[b, x]` base `b`), `Log2`, `Log10`; `Sin`, `Cos`,
   `Tan`, `ArcSin`, `ArcCos`, `ArcTan` (`ArcTan[x, y]` = atan2); `Sinh`, `Cosh`,
-  `Tanh`, `ArcSinh`, `ArcCosh`, `ArcTanh`.
+  `Tanh`, `ArcSinh`, `ArcCosh`, `ArcTanh`; the special functions `Erf`, `Erfc`,
+  and the Riemann zeta `Zeta`.
 - **Complex** — the imaginary unit `I`, plus `Re`, `Im`, `Conjugate`, `Abs`,
   `Arg`. Kept **exact** (Gaussian-rational) when possible — `(1 + I)^2` → `2 I`,
   `Sqrt[-4]` → `2 I`, `1/(1 + I)` → `1/2 - 1/2 I` — and an arbitrary-precision

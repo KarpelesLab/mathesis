@@ -189,6 +189,9 @@ fn call(head: &str, args: &[Value]) -> EResult<Value> {
         "ArcCosh" => real_unary(head, args, Float::acosh),
         "ArcTanh" => real_unary(head, args, Float::atanh),
         "Exp" => transcendental(head, args, Float::exp, |c| c.exp()),
+        "Erf" => real_unary(head, args, Float::erf),
+        "Erfc" => real_unary(head, args, Float::erfc),
+        "Zeta" => real_unary(head, args, Float::zeta),
         "Log" => log(head, args),
         "Log2" => {
             arity(head, args, 1)?;
@@ -303,6 +306,20 @@ fn call(head: &str, args: &[Value]) -> EResult<Value> {
         "Radical" => {
             arity(head, args, 1)?;
             Ok(Value::Int(value::as_int(&args[0])?.radical()))
+        }
+        "DiscreteLog" => {
+            // DiscreteLog[b, t, m] — least x ≥ 0 with b^x ≡ t (mod m).
+            arity(head, args, 3)?;
+            let base = value::as_int(&args[0])?;
+            let target = value::as_int(&args[1])?;
+            let modulus = value::as_int(&args[2])?;
+            if !modulus.is_positive() || modulus.is_one() {
+                return err("DiscreteLog: the modulus must be greater than 1");
+            }
+            let order = modulus.euler_phi();
+            puremp::discrete_log(&base, &target, &modulus, &order)
+                .map(Value::Int)
+                .ok_or_else(|| EvalError("DiscreteLog: no solution exists".into()))
         }
         "EvenQ" => {
             arity(head, args, 1)?;
