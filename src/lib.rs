@@ -32,16 +32,21 @@ use value::Value;
 pub fn evaluate(input: &str) -> String {
     match run(input) {
         Ok(v) => {
-            let approx = match v.approx() {
-                Some(a) => format!(",\"approx\":{}", json_string(&a)),
-                None => String::new(),
-            };
-            format!(
-                "{{\"ok\":true,\"text\":{},\"tex\":{}{}}}",
-                json_string(&v.to_text()),
-                json_string(&v.to_tex()),
-                approx,
-            )
+            if let Some(text) = v.plain_text() {
+                // Opaque text (string / SMT output) — rendered as monospace.
+                format!("{{\"ok\":true,\"text\":{},\"plain\":true}}", json_string(text))
+            } else {
+                let approx = match v.approx() {
+                    Some(a) => format!(",\"approx\":{}", json_string(&a)),
+                    None => String::new(),
+                };
+                format!(
+                    "{{\"ok\":true,\"text\":{},\"tex\":{}{}}}",
+                    json_string(&v.to_text()),
+                    json_string(&v.to_tex()),
+                    approx,
+                )
+            }
         }
         Err(e) => format!("{{\"ok\":false,\"error\":{}}}", json_string(&e.0)),
     }
@@ -245,6 +250,25 @@ mod tests {
         assert!(out("1/(1 + I)").contains("1/2 - 1/2 I"), "{}", out("1/(1 + I)"));
         // inexact complex isn't supported → a clear error, not a wrong answer.
         assert!(out("Pi*I").contains("\"ok\":false"), "{}", out("Pi*I"));
+    }
+
+    #[test]
+    fn smt_solver() {
+        // A satisfiable linear-integer problem, with a model.
+        let sat = out(r#"SMT["(declare-const x Int)(assert (> x 5))(assert (< x 7))(check-sat)(get-value (x))"]"#);
+        assert!(sat.contains("sat"), "{sat}");
+        assert!(sat.contains("\"plain\":true"), "{sat}");
+
+        // Unsatisfiable.
+        let unsat = out(r#"SMT["(declare-const x Int)(assert (> x 5))(assert (< x 5))(check-sat)"]"#);
+        assert!(unsat.contains("unsat"), "{unsat}");
+
+        // Solver/parse errors surface as errors.
+        assert!(out(r#"SMT["(check-sat"]"#).contains("\"ok\":false"));
+        // Non-string argument is rejected.
+        assert!(out("SMT[5]").contains("expects a string"));
+        // A bare string literal renders as plain text.
+        assert!(out(r#""hello""#).contains("\"plain\":true"));
     }
 
     #[test]

@@ -94,6 +94,13 @@ Builtins (all delegating to `puremp`):
   `Dot`, `MatrixRank`, `LinearSolve`, `IdentityMatrix`; `LatticeReduce` (LLL
   reduction of an integer basis, optional second argument δ ∈ (1/4, 1]).
   Rectangular list-of-lists render as bracketed matrices.
+- **Solving / theorem proving** — `SMT["…"]` runs an SMT-LIB 2 script through
+  [`z3rs`](https://github.com/KarpelesLab/z3rs) (a pure-Rust Z3 port) and shows
+  the solver's verbatim output. It decides QF_LIA / QF_LRA / QF_UF / QF_AX /
+  QF_BV and is sound and terminating (a work budget yields `unknown`, never a
+  hang). Example:
+  `SMT["(declare-const x Int)(assert (> x 5))(assert (< x 7))(check-sat)(get-value (x))"]`
+  → `sat` / `((x 6))`.
 
 ## Sharing
 

@@ -21,6 +21,8 @@ pub enum Expr {
     Decimal { int: String, frac: String },
     /// A bare identifier (`Pi`, `x`, …).
     Symbol(String),
+    /// A string literal (e.g. an SMT-LIB script passed to `SMT[..]`).
+    Str(String),
     /// `%` — the previous result.
     Last,
     Neg(Box<Expr>),

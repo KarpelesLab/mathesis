@@ -19,6 +19,10 @@ crate-type = ["cdylib", "rlib"]
 # only the `rational` feature layer is needed, kept `no_std`+`alloc`.
 puremp = { version = "0.1.9", default-features = false, features = ["rational", "float", "lattice", "matrix", "complex"] }
 
+# z3rs supplies the SMT/theorem-proving engine (a pure-Rust Z3 port). `no_std`
+# by default; its only dependency is `puremp`, so nothing else enters the tree.
+z3rs = { version = "0.0.3", default-features = false }
+
 # wasm bindings for the browser.
 wasm-bindgen = "0.2"
 

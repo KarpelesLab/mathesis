@@ -11,6 +11,8 @@ export interface EvalResult {
   tex?: string
   /** Decimal approximation to show alongside an exact result (π, √2, a fraction). */
   approx?: string
+  /** When set, `text` is opaque output (string / SMT) — render as monospace, not math. */
+  plain?: boolean
   /** Human-readable message (present when not ok). */
   error?: string
 }

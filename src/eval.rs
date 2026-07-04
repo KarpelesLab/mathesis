@@ -34,6 +34,7 @@ pub fn eval(e: &Expr) -> EResult<Value> {
             .map_err(|_| EvalError(format!("invalid integer literal `{s}`"))),
         Expr::Decimal { int, frac } => decimal_literal(int, frac),
         Expr::Symbol(s) => symbol(s),
+        Expr::Str(s) => Ok(Value::Text(s.clone())),
         Expr::Last => get_last(),
         Expr::Neg(x) => value::neg(&eval(x)?),
         Expr::Factorial(x) => factorial(&eval(x)?),
@@ -396,6 +397,7 @@ fn call(head: &str, args: &[Value]) -> EResult<Value> {
             arg(&args[0])
         }
         "LatticeReduce" => lattice_reduce(head, args),
+        "SMT" => smt(head, args),
         "Numerator" => {
             arity(head, args, 1)?;
             match &args[0] {
@@ -527,6 +529,27 @@ fn arg(v: &Value) -> EResult<Value> {
 
 fn int_from(x: i32) -> Value {
     Value::Int(Int::from(x))
+}
+
+/// `SMT["…"]` runs an SMT-LIB 2 script through the z3rs solver and returns the
+/// verbatim solver output — one line per command (`sat`/`unsat`/`unknown`,
+/// models, `get-value` results, …). The engine is sound and terminating: a work
+/// budget yields `unknown` rather than a wrong answer or a hang.
+fn smt(head: &str, args: &[Value]) -> EResult<Value> {
+    arity(head, args, 1)?;
+    let script = match &args[0] {
+        Value::Text(s) => s.as_str(),
+        _ => {
+            return err(
+                "SMT expects a string, e.g. SMT[\"(declare-const x Int)(assert (> x 5))(check-sat)\"]",
+            );
+        }
+    };
+    match z3rs::cmd_context::run_smt2(script) {
+        Ok(lines) if lines.is_empty() => Ok(Value::Text("(no output)".to_string())),
+        Ok(lines) => Ok(Value::Text(lines.join("\n"))),
+        Err(e) => err(format!("SMT error: {e}")),
+    }
 }
 
 /// `PowerMod[a, b, m]` = a^b mod m, using the modular inverse of `a` for b < 0.

@@ -51,6 +51,7 @@ const examples = [
   'PowerMod[7, 100, 13]',
   'Fibonacci[100]',
   'LatticeReduce[{{1, 1, 1}, {-1, 0, 2}, {3, 5, 6}}]',
+  'SMT["(declare-const x Int)(assert (> x 5))(assert (< x 7))(check-sat)(get-value (x))"]',
 ]
 
 onMounted(async () => {
@@ -248,6 +249,7 @@ async function shareNotebook() {
                   <code>{{ preview(entry.result.text!) }}</code>
                   <span class="huge-note">{{ entry.result.text!.length.toLocaleString() }} characters — truncated for display</span>
                 </div>
+                <pre v-else-if="entry.result.plain" class="plain-out">{{ entry.result.text }}</pre>
                 <template v-else>
                   <MathOutput
                     v-if="entry.result.ok && entry.result.tex"

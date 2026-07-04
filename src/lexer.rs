@@ -8,6 +8,8 @@ pub enum Tok {
     /// decimals (the digits after the dot, possibly empty for `5.`).
     Num { int: String, frac: Option<String> },
     Ident(String),
+    /// A double-quoted string literal, already unescaped.
+    Str(String),
     Plus,
     Minus,
     Star,
@@ -34,6 +36,42 @@ pub fn lex(src: &str) -> Result<Vec<Tok>, String> {
         let c = b[i];
         match c {
             b' ' | b'\t' | b'\r' | b'\n' => i += 1,
+            b'"' => {
+                i += 1; // opening quote
+                let mut s = String::new();
+                loop {
+                    if i >= b.len() {
+                        return Err("unterminated string literal".to_string());
+                    }
+                    match b[i] {
+                        b'"' => {
+                            i += 1; // closing quote
+                            break;
+                        }
+                        b'\\' => {
+                            // Escapes: \" \\ \n \t \r; anything else is literal.
+                            i += 1;
+                            if i >= b.len() {
+                                return Err("unterminated string escape".to_string());
+                            }
+                            match b[i] {
+                                b'n' => s.push('\n'),
+                                b't' => s.push('\t'),
+                                b'r' => s.push('\r'),
+                                other => s.push(other as char),
+                            }
+                            i += 1;
+                        }
+                        _ => {
+                            // Copy one UTF-8 char.
+                            let ch = src[i..].chars().next().unwrap();
+                            s.push(ch);
+                            i += ch.len_utf8();
+                        }
+                    }
+                }
+                out.push(Tok::Str(s));
+            }
             b'0'..=b'9' => {
                 let start = i;
                 while i < b.len() && b[i].is_ascii_digit() {

@@ -42,6 +42,9 @@ pub enum Value {
     /// to `Int`/`Ratio` (see [`from_complex`]).
     Cplx(Complex<Rational>),
     Bool(bool),
+    /// Opaque plain text — a string literal, or verbatim solver output from
+    /// `SMT[..]`. Rendered as monospace, never typeset as math.
+    Text(String),
     /// A display-only decimal string produced by `N[..]`; not fed back into
     /// arithmetic.
     Decimal(String),
@@ -305,6 +308,7 @@ impl Value {
             Value::Real(f) => real_string(f),
             Value::Sym { text, .. } => text.clone(),
             Value::Cplx(c) => complex_render(c, false),
+            Value::Text(s) => s.clone(),
             Value::Bool(b) => if *b { "True" } else { "False" }.to_string(),
             Value::Decimal(s) => s.clone(),
             Value::List(xs) => {
@@ -347,6 +351,9 @@ impl Value {
             Value::Real(f) => real_string(f),
             Value::Sym { tex, .. } => tex.clone(),
             Value::Cplx(c) => complex_render(c, true),
+            // Not typeset — the frontend renders text results as monospace via
+            // the `plain` flag; this arm exists only for completeness.
+            Value::Text(s) => s.clone(),
             Value::Bool(b) => format!("\\text{{{}}}", if *b { "True" } else { "False" }),
             Value::Decimal(s) => s.clone(),
             Value::List(xs) => match matrix_tex(xs) {
@@ -380,6 +387,15 @@ impl Value {
                 }
                 parts.concat()
             }
+        }
+    }
+
+    /// For opaque text results (string literals, `SMT[..]` output), the raw
+    /// text to render as monospace instead of typeset math.
+    pub fn plain_text(&self) -> Option<&str> {
+        match self {
+            Value::Text(s) => Some(s),
+            _ => None,
         }
     }
 

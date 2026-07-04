@@ -95,6 +95,7 @@ impl Parser {
                 None => Expr::Int(int),
                 Some(frac) => Expr::Decimal { int, frac },
             }),
+            Tok::Str(s) => Ok(Expr::Str(s)),
             Tok::Percent => Ok(Expr::Last),
             Tok::Ident(name) => {
                 if *self.peek() == Tok::LBrack {
@@ -152,6 +153,7 @@ fn describe(t: &Tok) -> String {
             Some(f) => format!("{int}.{f}"),
         },
         Tok::Ident(s) => s.clone(),
+        Tok::Str(s) => format!("\"{s}\""),
         Tok::Plus => "+".into(),
         Tok::Minus => "-".into(),
         Tok::Star => "*".into(),
