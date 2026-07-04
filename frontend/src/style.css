@@ -419,6 +419,7 @@ kbd {
   font-size: 0.9rem;
   color: var(--dust);
   letter-spacing: 0.01em;
+  overflow-wrap: anywhere;
 }
 
 .error {

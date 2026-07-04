@@ -641,8 +641,18 @@ fn matrix_tex(rows: &[Value]) -> Option<String> {
 /// Default rendering of a real: rounded to ~16 significant digits — the familiar
 /// double-precision look. `N[..]` asks for the full precision. Non-finite values
 /// render via `Float`'s own `Display` (`inf` / `-inf`).
+///
+/// A very large or very small magnitude (e.g. `Sqrt[1000!]`) would otherwise
+/// print as a wall of zeros in plain decimal; those switch to scientific
+/// notation so the result stays short.
 fn real_string(f: &Float) -> String {
-    f.round(DISPLAY_BITS, NEAR).to_string()
+    let r = f.round(DISPLAY_BITS, NEAR);
+    let plain = r.to_string();
+    if plain.len() > 24 {
+        format!("{r:e}")
+    } else {
+        plain
+    }
 }
 
 /// Render a real as a decimal with `digits` fractional places, for `N[..]`.

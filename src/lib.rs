@@ -338,6 +338,16 @@ mod tests {
     }
 
     #[test]
+    fn large_reals_use_scientific() {
+        // Sqrt of a big non-square: the decimal approximation is scientific,
+        // not a 1000-character run of zeros.
+        let r = out("Sqrt[100!]");
+        assert!(r.contains("\"approx\":\"9.66054943799493e78\""), "{r}");
+        // Ordinary reals keep their plain decimal form.
+        assert!(out("Sqrt[2]").contains("1.4142135623730951"), "{}", out("Sqrt[2]"));
+    }
+
+    #[test]
     fn errors_are_reported() {
         assert!(out("1/0").contains("\"ok\":false"));
         assert!(out("Foo[1]").contains("unknown function"));
