@@ -167,13 +167,10 @@ async function shareNotebook() {
 <template>
   <div class="app">
     <header class="topbar">
-      <div class="brand">
+      <a class="brand" href="./" title="Mathesis — start a fresh sheet">
         <span class="mark">∴</span>
-        <div class="titles">
-          <h1>Mathesis</h1>
-          <p>a computational notebook that runs entirely in your browser</p>
-        </div>
-      </div>
+        <span class="wordmark">Mathesis</span>
+      </a>
       <div class="actions">
         <button
           class="share-nb"
@@ -195,10 +192,21 @@ async function shareNotebook() {
     </header>
 
     <main ref="scroller" class="scroll">
-      <section v-if="entries.length === 0" class="welcome">
-        <p class="lede">
-          Type an expression and press <kbd>Enter</kbd>. Everything is computed exactly, on your
-          machine — powered by pure-Rust arbitrary-precision arithmetic compiled to WebAssembly.
+      <section v-if="entries.length === 0" class="hero">
+        <p class="eyebrow">exact by construction</p>
+        <div class="hero-demo">
+          <div class="hero-expr">2<sup>128</sup></div>
+          <p class="hero-approx">
+            <span class="approx-label">a calculator rounds to</span>3.4028 × 10³⁸
+          </p>
+          <p class="hero-exact">
+            <span class="tf">∴</span>
+            <span class="hero-num">340282366920938463463374607431768211456</span>
+          </p>
+        </div>
+        <p class="hero-cap">
+          Every digit, exactly — no rounding, no server. Type an expression and press
+          <kbd>Enter</kbd>.
         </p>
         <div class="examples">
           <button v-for="ex in examples" :key="ex" class="chip" @click="useExample(ex)">
@@ -221,13 +229,13 @@ async function shareNotebook() {
             </svg>
           </button>
           <div class="io in">
-            <span class="prompt in-prompt">In[{{ entry.n }}]</span>
+            <span class="gutter idx">{{ entry.n }}</span>
             <button class="source" :title="'Reuse this input'" @click="reuse(entry.input)">
               {{ entry.input }}
             </button>
           </div>
           <div class="io out">
-            <span class="prompt out-prompt">Out[{{ entry.n }}]</span>
+            <span class="gutter tf" :title="'Out[' + entry.n + ']'">∴</span>
             <div class="result">
               <span v-if="entry.pending" class="pending">
                 <span class="dots" aria-label="computing"><i></i><i></i><i></i></span>
@@ -254,7 +262,7 @@ async function shareNotebook() {
 
     <footer class="composer">
       <div class="composer-inner">
-        <span class="prompt live-prompt">In[{{ counter + 1 }}]</span>
+        <span class="gutter tf live" :title="'In[' + (counter + 1) + ']'">∴</span>
         <Editor
           ref="editor"
           @submit="run"

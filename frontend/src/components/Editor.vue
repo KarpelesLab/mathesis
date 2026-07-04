@@ -22,20 +22,20 @@ let view: EditorView | null = null
 const theme = EditorView.theme({
   '&': {
     fontSize: '1.05rem',
-    color: 'var(--ink)',
+    color: 'var(--chalk)',
     backgroundColor: 'transparent',
   },
   '.cm-content': {
     fontFamily: 'var(--font-mono)',
-    caretColor: 'var(--accent)',
+    caretColor: 'var(--amber)',
     padding: '0.15rem 0',
   },
   '.cm-line': { padding: '0' },
   '&.cm-focused': { outline: 'none' },
-  '.cm-cursor': { borderLeftColor: 'var(--accent)', borderLeftWidth: '2px' },
-  '.cm-placeholder': { color: 'var(--muted)', fontStyle: 'normal' },
+  '.cm-cursor': { borderLeftColor: 'var(--amber)', borderLeftWidth: '2px' },
+  '.cm-placeholder': { color: 'var(--dust)', fontStyle: 'normal' },
   '.cm-selectionBackground, ::selection': {
-    backgroundColor: 'var(--accent-dim)',
+    backgroundColor: 'var(--amber-soft)',
   },
 })
 
