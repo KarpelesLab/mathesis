@@ -5,7 +5,7 @@
 
 use core::cell::RefCell;
 
-use puremp::{Float, Int, Rational, RoundingMode, lll_reduce, lll_reduce_delta};
+use puremp::{Float, Int, Matrix, Rational, RoundingMode, lll_reduce, lll_reduce_delta};
 
 use crate::ast::{Expr, Op};
 use crate::error::{EResult, EvalError, err};
@@ -144,9 +144,218 @@ fn call(head: &str, args: &[Value]) -> EResult<Value> {
         "Sin" => real_unary(head, args, Float::sin),
         "Cos" => real_unary(head, args, Float::cos),
         "Tan" => real_unary(head, args, Float::tan),
-        "ArcTan" => real_unary(head, args, Float::atan),
+        "ArcSin" => real_unary(head, args, Float::asin),
+        "ArcCos" => real_unary(head, args, Float::acos),
+        "ArcTan" => match args.len() {
+            // ArcTan[x, y] is the angle of the point (x, y) — atan2(y, x).
+            2 => value::real(value::to_float(&args[1])?.atan2(&value::to_float(&args[0])?, WORK_BITS, NEAR)),
+            _ => real_unary(head, args, Float::atan),
+        },
+        "Sinh" => real_unary(head, args, Float::sinh),
+        "Cosh" => real_unary(head, args, Float::cosh),
+        "Tanh" => real_unary(head, args, Float::tanh),
+        "ArcSinh" => real_unary(head, args, Float::asinh),
+        "ArcCosh" => real_unary(head, args, Float::acosh),
+        "ArcTanh" => real_unary(head, args, Float::atanh),
         "Exp" => real_unary(head, args, Float::exp),
         "Log" => log(head, args),
+        "Log2" => {
+            arity(head, args, 1)?;
+            let x = value::to_float(&args[0])?.ln(WORK_BITS, NEAR);
+            value::real(x.div(&Float::ln2(WORK_BITS, NEAR), WORK_BITS, NEAR))
+        }
+        "Log10" => {
+            arity(head, args, 1)?;
+            let x = value::to_float(&args[0])?.ln(WORK_BITS, NEAR);
+            let ln10 = Float::from_int(&Int::from(10), WORK_BITS, NEAR).ln(WORK_BITS, NEAR);
+            value::real(x.div(&ln10, WORK_BITS, NEAR))
+        }
+        // --- number theory (integer arguments) ---
+        "PowerMod" => power_mod(head, args),
+        "ModularInverse" => {
+            arity(head, args, 2)?;
+            let m = value::as_int(&args[1])?;
+            value::as_int(&args[0])?
+                .modinv(&m)
+                .map(Value::Int)
+                .ok_or_else(|| EvalError("ModularInverse: no inverse exists modulo m".into()))
+        }
+        "ExtendedGCD" => {
+            arity(head, args, 2)?;
+            let (g, s, t) = value::as_int(&args[0])?.extended_gcd(&value::as_int(&args[1])?);
+            Ok(Value::List(vec![
+                Value::Int(g),
+                Value::List(vec![Value::Int(s), Value::Int(t)]),
+            ]))
+        }
+        "JacobiSymbol" => {
+            arity(head, args, 2)?;
+            Ok(int_from(value::as_int(&args[0])?.jacobi(&value::as_int(&args[1])?)))
+        }
+        "ChineseRemainder" => {
+            arity(head, args, 2)?;
+            let residues = int_vec(&args[0])?;
+            let moduli = int_vec(&args[1])?;
+            if residues.len() != moduli.len() {
+                return err("ChineseRemainder: the two lists must have equal length");
+            }
+            Int::crt(&residues, &moduli)
+                .map(Value::Int)
+                .ok_or_else(|| EvalError("ChineseRemainder: no solution (inconsistent or non-coprime moduli)".into()))
+        }
+        "Mod" => {
+            arity(head, args, 2)?;
+            let b = value::as_int(&args[1])?;
+            if b.is_zero() {
+                return err("Mod: the modulus must be nonzero");
+            }
+            Ok(Value::Int(value::as_int(&args[0])?.rem_euclid(&b)))
+        }
+        "Quotient" => {
+            arity(head, args, 2)?;
+            let b = value::as_int(&args[1])?;
+            if b.is_zero() {
+                return err("Quotient: the divisor must be nonzero");
+            }
+            Ok(Value::Int(value::as_int(&args[0])?.div_floor(&b)))
+        }
+        "SqrtMod" => {
+            arity(head, args, 2)?;
+            value::as_int(&args[0])?
+                .sqrt_mod(&value::as_int(&args[1])?)
+                .map(Value::Int)
+                .ok_or_else(|| EvalError("SqrtMod: no square root exists".into()))
+        }
+        "Multinomial" => {
+            if args.is_empty() {
+                return err("Multinomial expects at least one argument");
+            }
+            let ks = args
+                .iter()
+                .map(|v| value::to_u64(&value::as_int(v)?))
+                .collect::<EResult<Vec<_>>>()?;
+            Ok(Value::Int(Int::multinomial(&ks)))
+        }
+        "LucasL" => {
+            arity(head, args, 1)?;
+            Ok(Value::Int(Int::lucas(value::to_u64(&value::as_int(&args[0])?)?)))
+        }
+        "NextPrime" => {
+            arity(head, args, 1)?;
+            Ok(Value::Int(next_prime(&value::as_int(&args[0])?)))
+        }
+        "EvenQ" => {
+            arity(head, args, 1)?;
+            Ok(Value::Bool(value::as_int(&args[0])?.is_even()))
+        }
+        "OddQ" => {
+            arity(head, args, 1)?;
+            Ok(Value::Bool(value::as_int(&args[0])?.is_odd()))
+        }
+        "IntegerQ" => {
+            arity(head, args, 1)?;
+            Ok(Value::Bool(matches!(&args[0], Value::Int(_))))
+        }
+        "Sign" => {
+            arity(head, args, 1)?;
+            sign(&args[0])
+        }
+        // --- rounding & rational conversions ---
+        "Floor" => {
+            arity(head, args, 1)?;
+            Ok(Value::Int(as_exact_rational(&args[0])?.floor()))
+        }
+        "Ceiling" => {
+            arity(head, args, 1)?;
+            Ok(Value::Int(as_exact_rational(&args[0])?.ceil()))
+        }
+        "Round" => {
+            arity(head, args, 1)?;
+            let r = as_exact_rational(&args[0])?;
+            let half = Rational::new(Int::from(1), Int::from(2));
+            Ok(Value::Int(r.add(&half).floor()))
+        }
+        "IntegerPart" => {
+            arity(head, args, 1)?;
+            Ok(Value::Int(as_exact_rational(&args[0])?.trunc()))
+        }
+        "FractionalPart" => {
+            arity(head, args, 1)?;
+            let r = as_exact_rational(&args[0])?;
+            let frac = r.sub(&Rational::from_integer(r.trunc()));
+            if matches!(&args[0], Value::Real(_) | Value::Sym { .. }) {
+                value::real(Float::from_rational(&frac, WORK_BITS, NEAR))
+            } else {
+                Ok(value::from_rational(frac))
+            }
+        }
+        "ContinuedFraction" => {
+            arity(head, args, 1)?;
+            let terms = value::to_rational(&args[0])?.continued_fraction();
+            Ok(Value::List(terms.into_iter().map(Value::Int).collect()))
+        }
+        "FromContinuedFraction" => {
+            arity(head, args, 1)?;
+            let terms = int_vec(&args[0])?;
+            if terms.is_empty() {
+                return err("FromContinuedFraction: the list must be non-empty");
+            }
+            Ok(value::from_rational(Rational::from_continued_fraction(&terms)))
+        }
+        "Rationalize" => {
+            arity(head, args, 2)?;
+            let r = as_exact_rational(&args[0])?;
+            Ok(value::from_rational(r.approximate(&value::as_int(&args[1])?)))
+        }
+        // --- matrices (exact, over rationals) ---
+        "Det" => {
+            arity(head, args, 1)?;
+            let m = rat_matrix(&args[0])?;
+            if !m.is_square() {
+                return err("Det: the matrix must be square");
+            }
+            Ok(value::from_rational(m.determinant()))
+        }
+        "Inverse" => {
+            arity(head, args, 1)?;
+            let m = rat_matrix(&args[0])?;
+            if !m.is_square() {
+                return err("Inverse: the matrix must be square");
+            }
+            m.inverse()
+                .map(|inv| matrix_to_value(&inv))
+                .ok_or_else(|| EvalError("Inverse: the matrix is singular".into()))
+        }
+        "Transpose" => {
+            arity(head, args, 1)?;
+            Ok(matrix_to_value(&rat_matrix(&args[0])?.transpose()))
+        }
+        "MatrixRank" => {
+            arity(head, args, 1)?;
+            Ok(Value::Int(Int::from(rat_matrix(&args[0])?.rank() as i64)))
+        }
+        "Dot" => {
+            arity(head, args, 2)?;
+            let a = rat_matrix(&args[0])?;
+            let b = rat_matrix(&args[1])?;
+            if a.cols() != b.rows() {
+                return err("Dot: inner dimensions must match");
+            }
+            Ok(matrix_to_value(&a.mul(&b)))
+        }
+        "LinearSolve" => {
+            arity(head, args, 2)?;
+            let m = rat_matrix(&args[0])?;
+            let b = rat_vec(&args[1])?;
+            m.solve(&b)
+                .map(|x| Value::List(x.into_iter().map(value::from_rational).collect()))
+                .ok_or_else(|| EvalError("LinearSolve: no unique solution".into()))
+        }
+        "IdentityMatrix" => {
+            arity(head, args, 1)?;
+            let n = value::to_u64(&value::as_int(&args[0])?)?.min(1024) as usize;
+            Ok(matrix_to_value(&Matrix::<Rational>::identity(n)))
+        }
         "Power" => {
             arity(head, args, 2)?;
             value::pow(&args[0], &args[1])
@@ -261,6 +470,130 @@ fn sqrt(v: &Value) -> EResult<Value> {
         return err("Sqrt of a negative number is not real (complex support is coming)");
     }
     value::real(x.sqrt(WORK_BITS, NEAR))
+}
+
+fn int_from(x: i32) -> Value {
+    Value::Int(Int::from(x))
+}
+
+/// `PowerMod[a, b, m]` = a^b mod m, using the modular inverse of `a` for b < 0.
+fn power_mod(head: &str, args: &[Value]) -> EResult<Value> {
+    arity(head, args, 3)?;
+    let a = value::as_int(&args[0])?;
+    let b = value::as_int(&args[1])?;
+    let m = value::as_int(&args[2])?;
+    if m.is_zero() {
+        return err("PowerMod: the modulus must be nonzero");
+    }
+    if b.is_negative() {
+        let inv = a
+            .modinv(&m)
+            .ok_or_else(|| EvalError("PowerMod: the base is not invertible modulo m".into()))?;
+        Ok(Value::Int(inv.modpow(&b.abs(), &m)))
+    } else {
+        Ok(Value::Int(a.modpow(&b, &m)))
+    }
+}
+
+/// Smallest prime strictly greater than `n`, found by scanning with the
+/// (delegated) BPSW primality test — no randomness required.
+fn next_prime(n: &Int) -> Int {
+    let two = Int::from(2);
+    if !n.is_positive() || n.is_one() {
+        return two;
+    }
+    // n ≥ 2 here, so the next prime is odd; start at the next odd number.
+    let mut c = n.add(&Int::from(1));
+    if c.is_even() {
+        c = c.add(&Int::from(1));
+    }
+    loop {
+        if c.is_prime_bpsw() {
+            return c;
+        }
+        c = c.add(&two);
+    }
+}
+
+fn sign(v: &Value) -> EResult<Value> {
+    let r = as_exact_rational(v)?;
+    Ok(int_from(if r.is_zero() {
+        0
+    } else if r.is_negative() {
+        -1
+    } else {
+        1
+    }))
+}
+
+/// Read a `{a, b, …}` list as a vector of integers.
+fn int_vec(v: &Value) -> EResult<Vec<Int>> {
+    match v {
+        Value::List(xs) => xs.iter().map(value::as_int).collect(),
+        _ => err("expected a list of integers, e.g. {1, 2, 3}"),
+    }
+}
+
+/// Read a `{a, b, …}` list as a vector of exact rationals.
+fn rat_vec(v: &Value) -> EResult<Vec<Rational>> {
+    match v {
+        Value::List(xs) => xs.iter().map(value::to_rational).collect(),
+        _ => err("expected a vector (list of numbers), e.g. {1, 2, 3}"),
+    }
+}
+
+/// The exact rational value of any real number, used by `Floor`/`Round`/etc.
+/// For a real/symbolic value this is the exact value of its float approximation.
+fn as_exact_rational(v: &Value) -> EResult<Rational> {
+    match v {
+        Value::Int(n) => Ok(Rational::from_integer(n.clone())),
+        Value::Ratio(r) => Ok(r.clone()),
+        Value::Real(f) => f
+            .to_rational()
+            .ok_or_else(|| EvalError("value is not finite".into())),
+        Value::Sym { val, .. } => val
+            .to_rational()
+            .ok_or_else(|| EvalError("value is not finite".into())),
+        _ => err("expected a real number"),
+    }
+}
+
+/// Read a `{{...}, ...}` list-of-lists as an exact rational matrix (integer or
+/// rational entries), checking that it is non-empty and rectangular.
+fn rat_matrix(v: &Value) -> EResult<Matrix<Rational>> {
+    let rows = match v {
+        Value::List(rows) => rows,
+        _ => return err("expected a matrix, e.g. {{1, 2}, {3, 4}}"),
+    };
+    if rows.is_empty() {
+        return err("the matrix has no rows");
+    }
+    let mut data: Vec<Vec<Rational>> = Vec::with_capacity(rows.len());
+    for row in rows {
+        let cells = match row {
+            Value::List(cells) => cells,
+            _ => return err("each matrix row must be a list, e.g. {1, 2, 3}"),
+        };
+        data.push(cells.iter().map(value::to_rational).collect::<EResult<Vec<_>>>()?);
+    }
+    let width = data[0].len();
+    if width == 0 || data.iter().any(|r| r.len() != width) {
+        return err("all matrix rows must have the same (nonzero) length");
+    }
+    Ok(Matrix::from_rows(data))
+}
+
+fn matrix_to_value(m: &Matrix<Rational>) -> Value {
+    let rows = (0..m.rows())
+        .map(|i| {
+            Value::List(
+                (0..m.cols())
+                    .map(|j| value::from_rational(m.get(i, j).clone()))
+                    .collect(),
+            )
+        })
+        .collect();
+    Value::List(rows)
 }
 
 /// `LatticeReduce[{{...}, ...}]` LLL-reduces an integer lattice basis (rows are

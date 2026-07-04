@@ -183,6 +183,54 @@ mod tests {
     }
 
     #[test]
+    fn number_theory() {
+        assert!(out("PowerMod[2, 10, 1000]").contains("\"text\":\"24\""));
+        assert!(out("PowerMod[3, -1, 7]").contains("\"text\":\"5\""));
+        assert!(out("ModularInverse[3, 7]").contains("\"text\":\"5\""));
+        assert!(out("ChineseRemainder[{2, 3}, {3, 5}]").contains("\"text\":\"8\""));
+        assert!(out("Mod[-3, 5]").contains("\"text\":\"2\""));
+        assert!(out("Quotient[17, 5]").contains("\"text\":\"3\""));
+        assert!(out("NextPrime[10]").contains("\"text\":\"11\""));
+        assert!(out("LucasL[10]").contains("\"text\":\"123\""));
+        assert!(out("EvenQ[4]").contains("True"));
+        assert!(out("Sign[-5]").contains("\"text\":\"-1\""));
+        assert!(out("ExtendedGCD[12, 18]").contains("6"), "{}", out("ExtendedGCD[12, 18]"));
+    }
+
+    #[test]
+    fn rounding_and_continued_fractions() {
+        assert!(out("Floor[7/2]").contains("\"text\":\"3\""));
+        assert!(out("Ceiling[7/2]").contains("\"text\":\"4\""));
+        assert!(out("Round[7/2]").contains("\"text\":\"4\""));
+        assert!(out("Floor[Pi]").contains("\"text\":\"3\""));
+        assert!(out("IntegerPart[7/2]").contains("\"text\":\"3\""));
+        assert!(out("FractionalPart[7/2]").contains("1/2"));
+        assert!(out("ContinuedFraction[7/3]").contains("{2, 3}"), "{}", out("ContinuedFraction[7/3]"));
+        assert!(out("FromContinuedFraction[{2, 3}]").contains("7/3"));
+    }
+
+    #[test]
+    fn matrices() {
+        assert!(out("Det[{{1, 2}, {3, 4}}]").contains("\"text\":\"-2\""));
+        assert!(out("Transpose[{{1, 2}, {3, 4}}]").contains("{1, 3}"));
+        assert!(out("MatrixRank[{{1, 2}, {2, 4}}]").contains("\"text\":\"1\""));
+        assert!(out("Inverse[{{1, 2}, {3, 4}}]").contains("-2"), "{}", out("Inverse[{{1, 2}, {3, 4}}]"));
+        assert!(
+            out("LinearSolve[{{1, 1}, {1, -1}}, {3, 1}]").contains("{2, 1}"),
+            "{}",
+            out("LinearSolve[{{1, 1}, {1, -1}}, {3, 1}]")
+        );
+        assert!(out("IdentityMatrix[2]").contains("{{1, 0}, {0, 1}}"));
+    }
+
+    #[test]
+    fn more_transcendentals() {
+        assert!(out("ArcSin[1]").contains("1.5707963267948966"), "{}", out("ArcSin[1]"));
+        assert!(out("Log10[1000]").contains("\"text\":\"3\"") || out("Log10[1000]").contains("2.9999"), "{}", out("Log10[1000]"));
+        assert!(out("Cosh[0]").contains("\"text\":\"1\""), "{}", out("Cosh[0]"));
+    }
+
+    #[test]
     fn errors_are_reported() {
         assert!(out("1/0").contains("\"ok\":false"));
         assert!(out("Foo[1]").contains("unknown function"));

@@ -70,12 +70,24 @@ Syntax supported: integer & exact-decimal literals, `+ - * / ^`, unary minus,
 postfix `!`, parentheses, `{lists}`, function calls `Head[args]`, and `%` for the
 previous result.
 
-Builtins: `Factor`, `GCD`, `LCM`, `Factorial`, `Binomial`, `Fibonacci`,
-`PrimeQ`, `Sqrt`, `Power`, `Abs`, `Numerator`, `Denominator`, `N`,
-`LatticeReduce` (LLL reduction of an integer basis, `LatticeReduce[{{…}, …}]`,
-optional second argument δ ∈ (1/4, 1]), and the constants/transcendentals `Pi`,
-`E`, `Sin`, `Cos`, `Tan`, `ArcTan`, `Exp`, `Log` (`Log[x]` natural, `Log[b, x]`
-base `b`).
+Builtins (all delegating to `puremp`):
+
+- **Arithmetic & general** — `Power`, `Sqrt`, `Abs`, `Sign`, `N`, `Floor`,
+  `Ceiling`, `Round`, `IntegerPart`, `FractionalPart`.
+- **Number theory** — `Factor`, `GCD`, `LCM`, `PrimeQ`, `NextPrime`,
+  `Factorial`, `Binomial`, `Multinomial`, `Fibonacci`, `LucasL`, `Mod`,
+  `Quotient`, `PowerMod`, `ModularInverse`, `ExtendedGCD`, `JacobiSymbol`,
+  `ChineseRemainder`, `SqrtMod`, `EvenQ`, `OddQ`, `IntegerQ`.
+- **Rationals** — `Numerator`, `Denominator`, `ContinuedFraction`,
+  `FromContinuedFraction`, `Rationalize`.
+- **Constants & transcendentals** — `Pi`, `E`; `Exp`, `Log` (`Log[x]` natural,
+  `Log[b, x]` base `b`), `Log2`, `Log10`; `Sin`, `Cos`, `Tan`, `ArcSin`,
+  `ArcCos`, `ArcTan` (`ArcTan[x, y]` = atan2); `Sinh`, `Cosh`, `Tanh`,
+  `ArcSinh`, `ArcCosh`, `ArcTanh`.
+- **Linear algebra** (exact, over rationals) — `Det`, `Inverse`, `Transpose`,
+  `Dot`, `MatrixRank`, `LinearSolve`, `IdentityMatrix`; `LatticeReduce` (LLL
+  reduction of an integer basis, optional second argument δ ∈ (1/4, 1]).
+  Rectangular list-of-lists render as bracketed matrices.
 
 ## Sharing
 
