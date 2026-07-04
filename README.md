@@ -10,6 +10,12 @@ WebAssembly, and wrapped in a Vue 3 notebook UI.
 > Live at **https://karpeleslab.github.io/mathesis/** (deployed from `master` via
 > GitHub Actions).
 
+## The name
+
+*Mathesis* (μάθησις) derives from the ancient Greek word for "learning" or "that
+which is learned". It typically refers to the rigorous, active pursuit of
+knowledge — particularly mathematical and scientific discipline.
+
 ## Philosophy
 
 Mathesis is a **frontend**. It owns the *language* — a lexer, parser, and
