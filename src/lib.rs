@@ -379,6 +379,20 @@ mod tests {
     }
 
     #[test]
+    fn boolean_logic() {
+        // Propositional variables are inferred as Bool.
+        assert!(out("SatisfiableQ[p || q]").contains("\"text\":\"True\""));
+        assert!(out("SatisfiableQ[p && Not[p]]").contains("\"text\":\"False\""));
+        assert!(out("SatisfiableQ[Implies[p, q] && p && Not[q]]").contains("\"text\":\"False\""));
+        // A boolean model is returned as typeset rules.
+        assert!(out("FindInstance[p || q, {p, q}]").contains("p -> True"));
+        // Mixed numeric/boolean.
+        assert!(out("SatisfiableQ[(x > 0) && p && Not[p]]").contains("\"text\":\"False\""));
+        // Nonlinear that z3rs can refute → unsatisfiable.
+        assert!(out("SatisfiableQ[x^2 == -1]").contains("\"text\":\"False\""));
+    }
+
+    #[test]
     fn errors_are_reported() {
         assert!(out("1/0").contains("\"ok\":false"));
         assert!(out("Foo[1]").contains("unknown function"));

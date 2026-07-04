@@ -21,7 +21,7 @@ puremp = { version = "0.2.1", default-features = false, features = ["rational", 
 
 # z3rs supplies the SMT/theorem-proving engine (a pure-Rust Z3 port). `no_std`
 # by default; its only dependency is `puremp`, so nothing else enters the tree.
-z3rs = { version = "0.0.4", default-features = false }
+z3rs = { version = "0.0.5", default-features = false }
 
 # wasm bindings for the browser.
 wasm-bindgen = "0.2"

@@ -112,7 +112,12 @@ Builtins (all delegating to `puremp`):
     rules** (`{x → 6, y → 4}`, or `{}` if none — reals as exact fractions like
     `x → 3/2`). An optional third argument picks the domain: `Integers` (default)
     or `Reals`. Constraints use `== != < <= > >= && ||` and the heads `And`,
-    `Or`, `Not`, `Implies`, `Xor`.
+    `Or`, `Not`, `Implies`, `Xor`. Variables used only in boolean positions are
+    inferred as propositions, so pure logic works too — `SatisfiableQ[p || q]`
+    → `True`, `SatisfiableQ[Implies[p, q] && p && Not[q]]` → `False`.
+    Nonlinear constraints can't be *solved* (z3rs decides only linear
+    arithmetic), but genuinely impossible ones are still refuted:
+    `SatisfiableQ[x^2 == -1]` → `False`.
   - `Maximize[obj, constraints, {vars}]` / `Minimize[…]` do linear optimization,
     returning `{optimum, {x → …}}` (unbounded/infeasible objectives error
     clearly).

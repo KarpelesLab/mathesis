@@ -7,7 +7,7 @@
 //! or reals is decidable (z3rs decides QF_LIA / QF_LRA); a nonlinear constraint
 //! (a product or power of two unknowns) may come back `unknown`.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use puremp::Int;
 
@@ -103,7 +103,8 @@ fn var_list(e: &Expr) -> EResult<Vec<String>> {
 fn satisfiable(e: &Expr) -> EResult<Value> {
     let mut vars = BTreeSet::new();
     let term = translate_top(e, &mut vars)?;
-    let lines = run(&build_script(&vars, &term, Domain::Integers, None))?;
+    let sorts = sorts_of(e);
+    let lines = run(&build_script(&vars, &sorts, &term, Domain::Integers, None))?;
     match lines.first().map(String::as_str) {
         Some("sat") => Ok(Value::Bool(true)),
         Some("unsat") => Ok(Value::Bool(false)),
@@ -116,15 +117,16 @@ fn satisfiable(e: &Expr) -> EResult<Value> {
 fn find_instance(e: &Expr, wanted: &[String], domain: Domain) -> EResult<Value> {
     let mut vars: BTreeSet<String> = wanted.iter().cloned().collect();
     let term = translate_top(e, &mut vars)?;
+    let sorts = sorts_of(e);
 
     // First decide satisfiability — `(get-value …)` is only legal after a *sat*
     // check-sat, so we can't ask for a model until we know there is one.
-    let decision = run(&build_script(&vars, &term, domain, None))?;
+    let decision = run(&build_script(&vars, &sorts, &term, domain, None))?;
     match decision.first().map(String::as_str) {
         // Mathematica returns {} when there is no instance.
         Some("unsat") => Ok(Value::Rules(Vec::new())),
         Some("sat") => {
-            let lines = run(&build_script(&vars, &term, domain, Some(wanted)))?;
+            let lines = run(&build_script(&vars, &sorts, &term, domain, Some(wanted)))?;
             let model = lines.get(1).map(String::as_str).unwrap_or("");
             Ok(Value::Rules(parse_model(model)))
         }
@@ -148,9 +150,17 @@ fn optimize(
     let cterm = translate_top(constraints, &mut vars)?;
     let oterm = translate(obj, &mut vars)?;
 
+    let mut sorts = BTreeMap::new();
+    infer(constraints, Kind::Bool, &mut sorts);
+    infer(obj, Kind::Num, &mut sorts);
+
     let mut s = format!("(set-logic {})\n", domain.logic());
     for v in &vars {
-        s.push_str(&format!("(declare-const {} {})\n", v, domain.sort()));
+        let sort = match sorts.get(v) {
+            Some(Kind::Bool) => "Bool",
+            _ => domain.sort(),
+        };
+        s.push_str(&format!("(declare-const {v} {sort})\n"));
     }
     s.push_str(&format!("(assert {cterm})\n"));
     s.push_str(&format!(
@@ -182,10 +192,103 @@ fn optimize(
     }
 }
 
-fn build_script(vars: &BTreeSet<String>, term: &str, domain: Domain, get: Option<&[String]>) -> String {
+// --- sort inference: which variables are Bool vs numeric --------------------
+
+#[derive(Clone, Copy, PartialEq)]
+enum Kind {
+    Bool,
+    Num,
+}
+
+/// Record a variable's inferred kind; a numeric use always wins over a boolean
+/// one (an ill-typed constraint then fails cleanly in the solver).
+fn mark(sorts: &mut BTreeMap<String, Kind>, name: &str, k: Kind) {
+    let new = match (sorts.get(name).copied(), k) {
+        (Some(Kind::Num), _) | (_, Kind::Num) => Kind::Num,
+        _ => Kind::Bool,
+    };
+    sorts.insert(name.to_string(), new);
+}
+
+/// Does this expression denote a boolean (a comparison, a logical connective, or
+/// a boolean literal)? Used to type the operands of `==`/`!=`.
+fn is_bool_expr(e: &Expr) -> bool {
+    match e {
+        Expr::Symbol(s) => s == "True" || s == "False",
+        Expr::Bin(op, ..) => matches!(
+            op,
+            Op::Eq | Op::Ne | Op::Lt | Op::Le | Op::Gt | Op::Ge | Op::And | Op::Or
+        ),
+        Expr::Call(h, _) => matches!(h.as_str(), "And" | "Or" | "Not" | "Implies" | "Xor"),
+        _ => false,
+    }
+}
+
+/// Infer each variable's sort by walking the constraint with an expected kind.
+fn infer(e: &Expr, exp: Kind, sorts: &mut BTreeMap<String, Kind>) {
+    match e {
+        Expr::Symbol(s) => {
+            if !matches!(s.as_str(), "True" | "False" | "Pi" | "E" | "I" | "EulerGamma" | "Catalan") {
+                mark(sorts, s, exp);
+            }
+        }
+        Expr::Neg(x) => infer(x, Kind::Num, sorts),
+        Expr::Bin(op, a, b) => match op {
+            Op::Add | Op::Sub | Op::Mul | Op::Div | Op::Pow | Op::Lt | Op::Le | Op::Gt | Op::Ge => {
+                infer(a, Kind::Num, sorts);
+                infer(b, Kind::Num, sorts);
+            }
+            Op::And | Op::Or => {
+                infer(a, Kind::Bool, sorts);
+                infer(b, Kind::Bool, sorts);
+            }
+            Op::Eq | Op::Ne => {
+                let k = if is_bool_expr(a) || is_bool_expr(b) { Kind::Bool } else { Kind::Num };
+                infer(a, k, sorts);
+                infer(b, k, sorts);
+            }
+        },
+        Expr::Call(head, args) => match head.as_str() {
+            "And" | "Or" | "Xor" | "Not" | "Implies" => {
+                for a in args {
+                    infer(a, Kind::Bool, sorts);
+                }
+            }
+            _ => {
+                for a in args {
+                    infer(a, Kind::Num, sorts);
+                }
+            }
+        },
+        Expr::List(items) => {
+            for c in items {
+                infer(c, exp, sorts);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn sorts_of(e: &Expr) -> BTreeMap<String, Kind> {
+    let mut sorts = BTreeMap::new();
+    infer(e, Kind::Bool, &mut sorts);
+    sorts
+}
+
+fn build_script(
+    vars: &BTreeSet<String>,
+    sorts: &BTreeMap<String, Kind>,
+    term: &str,
+    domain: Domain,
+    get: Option<&[String]>,
+) -> String {
     let mut s = format!("(set-logic {})\n", domain.logic());
     for v in vars {
-        s.push_str(&format!("(declare-const {} {})\n", v, domain.sort()));
+        let sort = match sorts.get(v) {
+            Some(Kind::Bool) => "Bool",
+            _ => domain.sort(),
+        };
+        s.push_str(&format!("(declare-const {v} {sort})\n"));
     }
     s.push_str(&format!("(assert {term})\n(check-sat)\n"));
     if let Some(gs) = get {
@@ -237,15 +340,17 @@ fn translate(e: &Expr, vars: &mut BTreeSet<String>) -> EResult<String> {
                 Ok(format!("(/ {num} 1{})", "0".repeat(frac.len())))
             }
         }
-        Expr::Symbol(s) => {
-            if matches!(s.as_str(), "Pi" | "E" | "I") {
-                return err(format!(
-                    "`{s}` cannot appear in an SMT constraint — only variables and rational numbers"
-                ));
+        Expr::Symbol(s) => match s.as_str() {
+            "True" => Ok("true".to_string()),
+            "False" => Ok("false".to_string()),
+            "Pi" | "E" | "I" | "EulerGamma" | "Catalan" => err(format!(
+                "`{s}` cannot appear in an SMT constraint — only variables and rational numbers"
+            )),
+            _ => {
+                vars.insert(s.clone());
+                Ok(s.clone())
             }
-            vars.insert(s.clone());
-            Ok(s.clone())
-        }
+        },
         Expr::Neg(x) => Ok(format!("(- {})", translate(x, vars)?)),
         Expr::Bin(op, a, b) => {
             let sa = translate(a, vars)?;
