@@ -28,7 +28,7 @@ export function saveLang(lang: Lang) {
 const messages = {
   en: {
     tagline: 'exact mathematics, in your browser',
-    nav: { docs: 'Docs', share: 'Share', source: 'source', home: 'Mathesis — start a fresh sheet', lang: 'Language' },
+    nav: { docs: 'Docs', share: 'Share', source: 'source', home: 'Mathesis — start a fresh sheet', lang: 'Language', shareLine: 'Share this line', del: 'Delete this line' },
     hero: {
       eyebrow: 'exact by construction',
       approx: 'a calculator rounds to',
@@ -74,7 +74,7 @@ const messages = {
 
   fr: {
     tagline: 'des mathématiques exactes, dans votre navigateur',
-    nav: { docs: 'Docs', share: 'Partager', source: 'source', home: 'Mathesis — nouvelle feuille', lang: 'Langue' },
+    nav: { docs: 'Docs', share: 'Partager', source: 'source', home: 'Mathesis — nouvelle feuille', lang: 'Langue', shareLine: 'Partager cette ligne', del: 'Supprimer cette ligne' },
     hero: {
       eyebrow: 'exact par construction',
       approx: 'une calculatrice arrondit à',
@@ -121,7 +121,7 @@ const messages = {
 
   ja: {
     tagline: '正確な数学を、ブラウザーで',
-    nav: { docs: 'ドキュメント', share: '共有', source: 'ソース', home: 'Mathesis — 新しいシート', lang: '言語' },
+    nav: { docs: 'ドキュメント', share: '共有', source: 'ソース', home: 'Mathesis — 新しいシート', lang: '言語', shareLine: 'この行を共有', del: 'この行を削除' },
     hero: {
       eyebrow: '厳密性を第一に',
       approx: '電卓が丸めると',

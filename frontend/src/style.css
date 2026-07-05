@@ -613,11 +613,30 @@ kbd {
   overflow-y: hidden;
 }
 
-/* per-cell share affordance */
-.cell-share {
+/* per-cell action buttons (share / delete) */
+.cell-actions {
   position: absolute;
   top: 1rem;
   right: 0;
+  display: inline-flex;
+  gap: 0.35rem;
+  opacity: 0;
+  transform: translateY(-2px);
+  transition: opacity 0.15s, transform 0.15s;
+}
+.cell:hover .cell-actions,
+.cell-actions:focus-within {
+  opacity: 1;
+  transform: none;
+}
+/* Touch devices have no hover — keep the affordances visible. */
+@media (hover: none) {
+  .cell-actions {
+    opacity: 0.7;
+    transform: none;
+  }
+}
+.cell-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -628,20 +647,17 @@ kbd {
   border: 1px solid var(--rule);
   border-radius: 8px;
   cursor: pointer;
-  opacity: 0;
-  transform: translateY(-2px);
-  transition: opacity 0.15s, color 0.15s, border-color 0.15s, transform 0.15s;
+  transition: color 0.15s, border-color 0.15s;
 }
-.cell:hover .cell-share,
-.cell-share:focus-visible {
-  opacity: 1;
-  transform: none;
-}
-.cell-share:hover {
+.cell-btn:hover {
   color: var(--amber);
   border-color: var(--amber);
 }
-.cell-share .ico {
+.cell-delete:hover {
+  color: var(--coral);
+  border-color: var(--coral);
+}
+.cell-btn .ico {
   width: 0.88rem;
   height: 0.88rem;
 }

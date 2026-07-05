@@ -95,12 +95,23 @@ async function run(input: string) {
   // Show the input immediately as a pending cell, before we start computing,
   // so a long-running calculation is visible (and stoppable) as it runs.
   counter.value += 1
-  const idx = entries.value.push({ n: counter.value, input, result: null, pending: true }) - 1
+  const n = counter.value
+  entries.value.push({ n, input, result: null, pending: true })
   historyPos.value = entries.value.length
   await scrollToBottom()
 
+  // Resolve the cell by its stable id, not its index — it may have been deleted
+  // (or reordered) while the computation was in flight.
+  const settle = (result: EvalResult) => {
+    const cell = entries.value.find((e) => e.n === n)
+    if (cell) {
+      cell.result = result
+      cell.pending = false
+    }
+  }
+
   try {
-    entries.value[idx].result = await evaluateInput(input)
+    settle(await evaluateInput(input))
   } catch (e) {
     let error: string
     if (e instanceof TimeoutError) {
@@ -110,9 +121,8 @@ async function run(input: string) {
     } else {
       error = `engine error: ${String(e)}`
     }
-    entries.value[idx].result = { ok: false, error }
+    settle({ ok: false, error })
   } finally {
-    entries.value[idx].pending = false
     busy.value = false
     await scrollToBottom()
   }
@@ -120,6 +130,11 @@ async function run(input: string) {
 
 function stop() {
   cancelCurrent()
+}
+
+function deleteCell(entry: Entry) {
+  const i = entries.value.findIndex((e) => e.n === entry.n)
+  if (i >= 0) entries.value.splice(i, 1)
 }
 
 function isHuge(r: EvalResult | null): boolean {
@@ -234,17 +249,22 @@ async function shareNotebook() {
 
       <ol class="cells">
         <li v-for="entry in entries" :key="entry.n" class="cell">
-          <button
-            class="cell-share"
-            title="Share this computation as a link"
-            @click="shareCell(entry)"
-          >
-            <svg viewBox="0 0 24 24" class="ico" aria-hidden="true">
-              <path
-                d="M18 8a3 3 0 1 0-2.83-4H15a3 3 0 0 0 .12 3.36L8.9 10.7a3 3 0 1 0 0 2.6l6.22 3.34A3 3 0 1 0 18 16a3 3 0 0 0-1.9.68L9.88 13.3a3 3 0 0 0 0-2.6l6.22-3.38A3 3 0 0 0 18 8Z"
-              />
-            </svg>
-          </button>
+          <div class="cell-actions">
+            <button class="cell-btn" :title="t('nav.shareLine')" @click="shareCell(entry)">
+              <svg viewBox="0 0 24 24" class="ico" aria-hidden="true">
+                <path
+                  d="M18 8a3 3 0 1 0-2.83-4H15a3 3 0 0 0 .12 3.36L8.9 10.7a3 3 0 1 0 0 2.6l6.22 3.34A3 3 0 1 0 18 16a3 3 0 0 0-1.9.68L9.88 13.3a3 3 0 0 0 0-2.6l6.22-3.38A3 3 0 0 0 18 8Z"
+                />
+              </svg>
+            </button>
+            <button class="cell-btn cell-delete" :title="t('nav.del')" @click="deleteCell(entry)">
+              <svg viewBox="0 0 24 24" class="ico" aria-hidden="true">
+                <path
+                  d="M9 3a1 1 0 0 0-1 1v1H4v2h16V5h-4V4a1 1 0 0 0-1-1H9Zm-3 6 .87 11.14A2 2 0 0 0 8.86 22h6.28a2 2 0 0 0 1.99-1.86L18 9H6Z"
+                />
+              </svg>
+            </button>
+          </div>
           <div class="io in">
             <span class="gutter idx">{{ entry.n }}</span>
             <button class="source" :title="'Reuse this input'" @click="reuse(entry.input)">
