@@ -17,6 +17,7 @@ mod eval;
 mod lexer;
 mod parser;
 mod plot;
+mod random;
 mod solve;
 mod value;
 
@@ -435,6 +436,34 @@ mod tests {
         assert!(out("SatisfiableQ[(x > 0) && p && Not[p]]").contains("\"text\":\"False\""));
         // Nonlinear that z3rs can refute → unsatisfiable.
         assert!(out("SatisfiableQ[x^2 == -1]").contains("\"text\":\"False\""));
+    }
+
+    #[test]
+    fn random_numbers() {
+        // Bounds hold across many draws (values are CSPRNG-sourced, so we can't
+        // assert exact outputs — only their ranges/shapes).
+        for _ in 0..100 {
+            let n: i64 = out("RandomInteger[{3, 7}]")
+                .split("\"text\":\"")
+                .nth(1)
+                .and_then(|s| s.split('"').next())
+                .and_then(|s| s.parse().ok())
+                .unwrap();
+            assert!((3..=7).contains(&n), "RandomInteger out of range: {n}");
+        }
+        // A coin flip is 0 or 1.
+        for _ in 0..50 {
+            let b = out("RandomInteger[]");
+            assert!(b.contains("\"text\":\"0\"") || b.contains("\"text\":\"1\""), "{b}");
+        }
+        // Counts produce lists; RandomPrime yields a prime; RandomBytes is hex.
+        let list = out("RandomInteger[9, 5]");
+        let text = list.split("\"text\":\"").nth(1).and_then(|s| s.split('"').next()).unwrap();
+        assert!(text.starts_with('{') && text.matches(',').count() == 4, "{text}");
+        assert!(out("PrimeQ[RandomPrime[500]]").contains("\"text\":\"True\""));
+        assert!(out("RandomBytes[8]").contains("\"plain\":true"));
+        // Empty ranges are rejected.
+        assert!(out("RandomInteger[{9, 2}]").contains("\"ok\":false"));
     }
 
     #[test]

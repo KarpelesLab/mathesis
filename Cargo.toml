@@ -26,6 +26,10 @@ z3rs = { version = "0.0.5", default-features = false }
 # wasm bindings for the browser.
 wasm-bindgen = "0.2"
 
+# Cryptographically-secure randomness. On wasm the `js` feature routes through
+# the Web Crypto CSPRNG (`crypto.getRandomValues`); natively it uses the OS RNG.
+getrandom = { version = "0.2", features = ["js"] }
+
 [profile.release]
 opt-level = "s"   # optimize for size — this ships to the browser
 lto = true

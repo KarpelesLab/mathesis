@@ -329,6 +329,11 @@ fn call(head: &str, args: &[Value]) -> EResult<Value> {
             arity(head, args, 1)?;
             Ok(Value::Int(value::as_int(&args[0])?.next_prime()))
         }
+        "RandomInteger" => crate::random::random_integer(args),
+        "RandomReal" => crate::random::random_real(args),
+        "RandomChoice" => crate::random::random_choice(args),
+        "RandomPrime" => crate::random::random_prime(args),
+        "RandomBytes" => crate::random::random_bytes(args),
         "PreviousPrime" => {
             arity(head, args, 1)?;
             value::as_int(&args[0])?

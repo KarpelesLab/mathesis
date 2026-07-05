@@ -153,6 +153,17 @@ export const CATEGORIES: Category[] = [
     ],
   },
   {
+    id: 'random',
+    title: t('Randomness', 'Aléatoire', '乱数'),
+    fns: [
+      { name: 'RandomInteger', syntax: 'RandomInteger[{min, max}]', examples: ['RandomInteger[100]', 'RandomInteger[{-5, 5}]', 'RandomInteger[6, 5]'], desc: t('A uniform random integer in [0, n] or [min, max]; a second argument gives a list. Cryptographically secure.', 'Un entier aléatoire uniforme dans [0, n] ou [min, max] ; un second argument renvoie une liste. Cryptographiquement sûr.', '[0, n] または [min, max] の一様乱整数。第 2 引数でリスト。暗号学的に安全。') },
+      { name: 'RandomReal', syntax: 'RandomReal[{min, max}]', examples: ['RandomReal[]', 'RandomReal[{0, 1}]', 'RandomReal[1, 3]'], desc: t('A uniform random real in [0, 1), [0, max) or [min, max), at full precision; a second argument gives a list.', 'Un réel aléatoire uniforme dans [0, 1), [0, max) ou [min, max), en pleine précision ; un second argument renvoie une liste.', '[0, 1)・[0, max)・[min, max) の一様乱実数（フル精度）。第 2 引数でリスト。') },
+      { name: 'RandomChoice', syntax: 'RandomChoice[list]', examples: ['RandomChoice[{2, 3, 5, 7}]', 'RandomChoice[{1, 2, 3}, 4]'], desc: t('Pick a uniform random element of a list (with replacement); a second argument gives that many picks.', "Choisit un élément aléatoire uniforme d'une liste (avec remise) ; un second argument en renvoie plusieurs.", 'リストから一様ランダムに要素を選ぶ（復元）。第 2 引数でその個数。') },
+      { name: 'RandomPrime', syntax: 'RandomPrime[max]', examples: ['RandomPrime[1000]', 'RandomPrime[{100, 200}]'], desc: t('A random prime in [2, max] or [min, max].', 'Un nombre premier aléatoire dans [2, max] ou [min, max].', '[2, max] または [min, max] の乱素数。') },
+      { name: 'RandomBytes', syntax: 'RandomBytes[n]', examples: ['RandomBytes[16]', 'RandomBytes[32]'], desc: t('n cryptographically-secure random bytes as a hex string (keys, nonces, salts).', 'n octets aléatoires cryptographiquement sûrs sous forme hexadécimale (clés, nonces, sels).', '暗号学的に安全な n バイトを 16 進文字列で（鍵・ノンス・ソルト）。') },
+    ],
+  },
+  {
     id: 'solving',
     title: t('Solving & logic', 'Résolution et logique', '求解・論理'),
     fns: [

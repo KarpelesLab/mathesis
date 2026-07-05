@@ -86,6 +86,11 @@ Builtins (all delegating to `puremp`):
   `ChineseRemainder`, `SqrtMod`, `DiscreteLog`, `EvenQ`, `OddQ`, `IntegerQ`.
 - **Rationals** — `Numerator`, `Denominator`, `ContinuedFraction`,
   `FromContinuedFraction`, `Rationalize`.
+- **Randomness** — `RandomInteger[{min, max}]`, `RandomReal[{min, max}]`,
+  `RandomChoice[list]`, `RandomPrime[max]`, and `RandomBytes[n]` (hex). A
+  trailing count returns a list. **Every value is cryptographically secure** —
+  drawn from the platform CSPRNG (`crypto.getRandomValues` in the browser, the
+  OS RNG natively); there is no insecure/seedable fast path.
 - **Constants & transcendentals** — `Pi`, `E`, `EulerGamma`, `Catalan`; `Exp`,
   `Log` (`Log[x]` natural, `Log[b, x]` base `b`), `Log2`, `Log10`; `Sin`, `Cos`,
   `Tan`, `ArcSin`, `ArcCos`, `ArcTan` (`ArcTan[x, y]` = atan2); `Sinh`, `Cosh`,
