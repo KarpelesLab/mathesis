@@ -263,8 +263,25 @@ fn call(head: &str, args: &[Value]) -> EResult<Value> {
         "Zeta" => real_unary(head, args, Float::zeta),
         "Gamma" => real_unary(head, args, Float::gamma),
         "LogGamma" => real_unary(head, args, Float::ln_gamma),
+        "Beta" => {
+            arity(head, args, 2)?;
+            let a = value::to_float(&args[0])?;
+            let b = value::to_float(&args[1])?;
+            value::real(Float::beta(&a, &b, WORK_BITS, NEAR))
+        }
+        // PolyGamma[x] is the digamma ψ(x); PolyGamma[n, x] is the nth polygamma.
+        "PolyGamma" => match args.len() {
+            1 => value::real(value::to_float(&args[0])?.digamma(WORK_BITS, NEAR)),
+            2 => {
+                let n = value::to_u64(&value::as_int(&args[0])?)?;
+                value::real(value::to_float(&args[1])?.polygamma(n, WORK_BITS, NEAR))
+            }
+            _ => err("PolyGamma expects PolyGamma[x] or PolyGamma[n, x]"),
+        },
         "BesselJ" => bessel(head, args, Float::bessel_j),
         "BesselI" => bessel(head, args, Float::bessel_i),
+        "BesselY" => bessel(head, args, Float::bessel_y),
+        "BesselK" => bessel(head, args, Float::bessel_k),
         "Identify" => {
             arity(head, args, 1)?;
             let x = value::to_float(&args[0])?;

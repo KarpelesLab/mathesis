@@ -507,6 +507,11 @@ mod tests {
         // The inverse symbolic calculator recognises closed forms.
         assert!(out("Identify[Pi^2/6]").contains("π"), "{}", out("Identify[Pi^2/6]"));
         assert!(out("Identify[Zeta[3]]").contains("ζ(3)"), "{}", out("Identify[Zeta[3]]"));
+        // 0.2.3 additions: Beta, PolyGamma (digamma / nth), second-kind Bessel.
+        assert!(out("N[Beta[2, 3], 12]").contains("0.0833333333"), "{}", out("N[Beta[2, 3], 12]"));
+        assert!(out("N[PolyGamma[1], 10]").contains("-0.5772156649")); // digamma(1) = -γ
+        assert!(out("N[PolyGamma[1, 1], 10]").contains("1.644934066")); // trigamma(1) = π²/6
+        assert!(out("N[BesselY[0, 1], 10]").contains("0.0882569642"));
     }
 
     #[test]
