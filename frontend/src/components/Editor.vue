@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { EditorState, Compartment } from '@codemirror/state'
 import { EditorView, keymap, placeholder } from '@codemirror/view'
 import {
@@ -8,6 +9,17 @@ import {
   historyKeymap,
   insertNewlineAndIndent,
 } from '@codemirror/commands'
+import {
+  autocompletion,
+  acceptCompletion,
+  closeCompletion,
+  moveCompletionSelection,
+} from '@codemirror/autocomplete'
+import { completionSource, signatureField } from '../editor-assist'
+import type { Lang } from '../i18n'
+
+const { locale } = useI18n({ useScope: 'global' })
+const getLang = () => locale.value as Lang
 
 const props = defineProps<{ placeholder?: string }>()
 const emit = defineEmits<{
@@ -70,10 +82,22 @@ onMounted(() => {
       extensions: [
         history(),
         placeholderComp.of(placeholder(props.placeholder ?? '')),
+        autocompletion({
+          override: [completionSource(getLang)],
+          defaultKeymap: false,
+          activateOnTyping: true,
+          icons: false,
+        }),
+        signatureField(getLang),
         keymap.of([
-          // Enter evaluates; Shift-Enter inserts a newline for multi-line input.
+          // When the completion popup is open these accept/navigate it; when it
+          // is closed they fall through (the commands return false) to submit
+          // and input-history behaviour.
+          { key: 'Enter', run: acceptCompletion },
           { key: 'Enter', run: submit },
           { key: 'Shift-Enter', run: insertNewlineAndIndent },
+          { key: 'Escape', run: closeCompletion },
+          { key: 'ArrowUp', run: moveCompletionSelection(false) },
           {
             key: 'ArrowUp',
             run: (v) => {
@@ -82,6 +106,7 @@ onMounted(() => {
               return true
             },
           },
+          { key: 'ArrowDown', run: moveCompletionSelection(true) },
           {
             key: 'ArrowDown',
             run: (v) => {

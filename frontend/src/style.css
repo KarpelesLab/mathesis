@@ -776,6 +776,72 @@ kbd {
   user-select: none;
 }
 
+/* ---- editor: autocomplete + signature help ------------------------------- */
+.cm-tooltip {
+  background: var(--slate-hi);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  color: var(--chalk);
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.5);
+}
+.cm-tooltip.cm-tooltip-autocomplete > ul {
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  max-height: 15rem;
+}
+.cm-tooltip-autocomplete ul li {
+  padding: 0.28rem 0.65rem;
+  color: var(--chalk-dim);
+}
+.cm-tooltip-autocomplete ul li[aria-selected] {
+  background: var(--amber-soft);
+  color: var(--chalk);
+}
+.cm-completionLabel {
+  color: var(--chalk);
+}
+.cm-completionDetail {
+  margin-left: 0.6rem;
+  color: var(--faint);
+  font-style: normal;
+  font-size: 0.85em;
+}
+.cm-completionMatchedText {
+  color: var(--amber);
+  text-decoration: none;
+  font-weight: 600;
+}
+.cm-completionInfo {
+  margin: 0 0.4rem;
+  padding: 0.5rem 0.7rem;
+  max-width: 20rem;
+  background: var(--slate-hi);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  color: var(--chalk-dim);
+  font-family: var(--font-serif);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+.cm-sig {
+  padding: 0.45rem 0.65rem;
+  max-width: 24rem;
+}
+.sig-syntax {
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  color: var(--chalk);
+}
+.sig-active {
+  color: var(--amber);
+}
+.sig-desc {
+  margin-top: 0.25rem;
+  font-family: var(--font-serif);
+  font-size: 0.85rem;
+  color: var(--dust);
+}
+
 /* ---- toast --------------------------------------------------------------- */
 .toast {
   position: fixed;

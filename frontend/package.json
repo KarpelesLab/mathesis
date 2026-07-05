@@ -11,6 +11,7 @@
     "wasm": "cd .. && wasm-pack build --target web --out-dir frontend/src/pkg --release"
   },
   "dependencies": {
+    "@codemirror/autocomplete": "^6.18.3",
     "@codemirror/commands": "^6.7.1",
     "@codemirror/state": "^6.4.1",
     "@codemirror/view": "^6.34.1",
