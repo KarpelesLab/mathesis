@@ -89,6 +89,12 @@ Builtins (all delegating to `puremp`):
   `ChineseRemainder`, `SqrtMod`, `DiscreteLog`, `EvenQ`, `OddQ`, `IntegerQ`.
 - **Rationals** — `Numerator`, `Denominator`, `ContinuedFraction`,
   `FromContinuedFraction`, `Rationalize`.
+- **Elliptic curves** (`y² = x³ + a·x + b`) — over `GF(p)` for prime `p`:
+  `ECAdd[a,b,p,P,Q]` (group law), `ECMultiply[a,b,p,k,P]` (`k·P`), `ECOrder[a,b,p]`
+  (point count), `ECPointOrder`, `ECPointQ`; plus `ECDiscriminant[a,b]` and
+  `ECjInvariant[a,b]`. Points are `{x, y}`; the identity (point at infinity) is
+  `{}`. e.g. on `y²=x³+2x+2` over `GF(17)`, `ECOrder[2,2,17]` → `19` and
+  `ECMultiply[2,2,17,19,{5,1}]` → `{}`.
 - **Randomness** — `RandomInteger[{min, max}]`, `RandomReal[{min, max}]`,
   `RandomChoice[list]`, `RandomPrime[max]`, and `RandomBytes[n]` (hex). A
   trailing count returns a list. **Every value is cryptographically secure** —

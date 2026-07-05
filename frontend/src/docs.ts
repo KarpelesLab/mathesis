@@ -157,6 +157,19 @@ export const CATEGORIES: Category[] = [
     ],
   },
   {
+    id: 'elliptic',
+    title: t('Elliptic curves', 'Courbes elliptiques', '楕円曲線'),
+    fns: [
+      { name: 'ECAdd', syntax: 'ECAdd[a, b, p, P, Q]', examples: ['ECAdd[2, 2, 17, {5, 1}, {6, 3}]'], desc: t('Group sum P + Q on y² = x³ + a·x + b over GF(p). Points are {x, y}; the identity (point at infinity) is {}.', 'Somme P + Q sur y² = x³ + a·x + b dans GF(p). Les points sont {x, y} ; l’identité (point à l’infini) est {}.', 'GF(p) 上の y² = x³ + a·x + b における群和 P + Q。点は {x, y}、無限遠点（単位元）は {}。') },
+      { name: 'ECMultiply', syntax: 'ECMultiply[a, b, p, k, P]', examples: ['ECMultiply[2, 2, 17, 5, {5, 1}]'], desc: t('Scalar multiple k·P (repeated addition) over GF(p).', 'Multiple scalaire k·P (addition répétée) dans GF(p).', 'GF(p) 上のスカラー倍 k·P（反復加算）。') },
+      { name: 'ECOrder', syntax: 'ECOrder[a, b, p]', examples: ['ECOrder[2, 2, 17]'], desc: t('The number of points on the curve over GF(p), including the point at infinity.', 'Le nombre de points de la courbe sur GF(p), point à l’infini compris.', 'GF(p) 上の曲線の点の数（無限遠点を含む）。') },
+      { name: 'ECPointOrder', syntax: 'ECPointOrder[a, b, p, P]', examples: ['ECPointOrder[2, 2, 17, {5, 1}]'], desc: t('The order of a point P — the least k > 0 with k·P = O.', 'L’ordre d’un point P — le plus petit k > 0 tel que k·P = O.', '点 P の位数 — k·P = O となる最小の k > 0。') },
+      { name: 'ECPointQ', syntax: 'ECPointQ[a, b, p, P]', examples: ['ECPointQ[2, 2, 17, {5, 1}]'], desc: t('True if the point lies on the curve over GF(p).', 'Vrai si le point est sur la courbe dans GF(p).', '点が GF(p) 上の曲線上にあれば True。') },
+      { name: 'ECDiscriminant', syntax: 'ECDiscriminant[a, b]', examples: ['ECDiscriminant[2, 2]'], desc: t('The discriminant Δ = −16(4a³ + 27b²); zero iff the curve is singular.', 'Le discriminant Δ = −16(4a³ + 27b²) ; nul ssi la courbe est singulière.', '判別式 Δ = −16(4a³ + 27b²)。曲線が特異な場合に限り 0。') },
+      { name: 'ECjInvariant', syntax: 'ECjInvariant[a, b]', examples: ['ECjInvariant[2, 2]'], desc: t('The j-invariant j = 1728·4a³ / (4a³ + 27b²).', 'Le j-invariant j = 1728·4a³ / (4a³ + 27b²).', 'j 不変量 j = 1728·4a³ / (4a³ + 27b²)。') },
+    ],
+  },
+  {
     id: 'random',
     title: t('Randomness', 'Aléatoire', '乱数'),
     fns: [

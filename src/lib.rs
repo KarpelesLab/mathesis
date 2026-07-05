@@ -16,6 +16,7 @@ mod error;
 mod eval;
 mod lexer;
 mod parser;
+mod elliptic;
 mod plot;
 mod random;
 mod solve;
@@ -469,6 +470,26 @@ mod tests {
         assert!(out("myx == 100").contains("\"text\":\"True\""));
         // Built-in constants are protected.
         assert!(out("Pi = 3").contains("\"ok\":false"));
+    }
+
+    #[test]
+    fn elliptic_curves() {
+        // y² = x³ + 2x + 2 over GF(17); (5,1) generates the whole group (order 19).
+        assert!(out("ECPointQ[2, 2, 17, {5, 1}]").contains("\"text\":\"True\""));
+        assert!(out("ECPointQ[2, 2, 17, {5, 2}]").contains("\"text\":\"False\""));
+        // Doubling via ECAdd matches scalar multiplication.
+        assert!(out("ECAdd[2, 2, 17, {5, 1}, {5, 1}]").contains("{6, 3}"));
+        assert!(out("ECMultiply[2, 2, 17, 2, {5, 1}]").contains("{6, 3}"));
+        // Group order, point order, and identity.
+        assert!(out("ECOrder[2, 2, 17]").contains("\"text\":\"19\""));
+        assert!(out("ECPointOrder[2, 2, 17, {5, 1}]").contains("\"text\":\"19\""));
+        assert!(out("ECMultiply[2, 2, 17, 19, {5, 1}]").contains("\"text\":\"{}\"")); // = O
+        assert!(out("ECAdd[2, 2, 17, {5, 1}, {}]").contains("{5, 1}")); // P + O = P
+        // Invariants and validation.
+        assert!(out("ECDiscriminant[2, 2]").contains("-2240"));
+        assert!(out("ECjInvariant[2, 2]").contains("13824/35"));
+        assert!(out("ECOrder[2, 3, 4]").contains("\"ok\":false")); // modulus not prime
+        assert!(out("ECOrder[0, 0, 17]").contains("\"ok\":false")); // singular
     }
 
     #[test]

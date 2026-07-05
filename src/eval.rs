@@ -376,6 +376,13 @@ fn call(head: &str, args: &[Value]) -> EResult<Value> {
             arity(head, args, 1)?;
             Ok(Value::Int(value::as_int(&args[0])?.next_prime()))
         }
+        "ECAdd" => crate::elliptic::ec_add(args),
+        "ECMultiply" => crate::elliptic::ec_multiply(args),
+        "ECOrder" => crate::elliptic::ec_order(args),
+        "ECPointOrder" => crate::elliptic::ec_point_order(args),
+        "ECPointQ" => crate::elliptic::ec_point_q(args),
+        "ECDiscriminant" => crate::elliptic::ec_discriminant(args),
+        "ECjInvariant" => crate::elliptic::ec_j_invariant(args),
         "RandomInteger" => crate::random::random_integer(args),
         "RandomReal" => crate::random::random_real(args),
         "RandomChoice" => crate::random::random_choice(args),
