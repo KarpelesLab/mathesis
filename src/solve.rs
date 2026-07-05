@@ -175,10 +175,12 @@ const MAX_SOLUTIONS: usize = 256;
 
 fn solve_all(e: &Expr, wanted: &[String], domain: Domain) -> EResult<Value> {
     if matches!(domain, Domain::Reals) {
-        return match find_instance(e, wanted, domain)? {
-            Value::Rules(r) if r.is_empty() => Ok(Value::List(Vec::new())),
-            v => Ok(Value::List(vec![v])),
+        let rows = match find_instance(e, wanted, domain)? {
+            Value::Rules(r) if r.is_empty() => Vec::new(),
+            Value::Rules(r) => vec![r],
+            _ => Vec::new(),
         };
+        return Ok(Value::Solutions { rows, truncated: false });
     }
 
     let mut vars: BTreeSet<String> = wanted.iter().cloned().collect();
@@ -239,11 +241,8 @@ fn solve_all(e: &Expr, wanted: &[String], domain: Domain) -> EResult<Value> {
 
     // Present solutions in a natural (sorted) order — the solver's is internal.
     solutions.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(core::cmp::Ordering::Equal));
-    let mut out: Vec<Value> = solutions.into_iter().map(|(_, r)| Value::Rules(r)).collect();
-    if truncated {
-        out.push(Value::Text(format!("… (first {MAX_SOLUTIONS} shown)")));
-    }
-    Ok(Value::List(out))
+    let rows: Vec<Vec<(String, Value)>> = solutions.into_iter().map(|(_, r)| r).collect();
+    Ok(Value::Solutions { rows, truncated })
 }
 
 /// A numeric sort key for a solution (first variable primary, then the rest).

@@ -37,6 +37,21 @@ pub fn evaluate(input: &str) -> String {
             if let Some(g) = v.graphics() {
                 // A Plot/Plot3D payload — the frontend draws it. `g` is raw JSON.
                 format!("{{\"ok\":true,\"graphics\":{g}}}")
+            } else if let Some(t) = v.solutions() {
+                // A Solve result — the frontend renders a table; `text` is a fallback.
+                let vars = t.vars.iter().map(|s| json_string(s)).collect::<Vec<_>>().join(",");
+                let rows = t
+                    .rows
+                    .iter()
+                    .map(|r| format!("[{}]", r.iter().map(|c| json_string(c)).collect::<Vec<_>>().join(",")))
+                    .collect::<Vec<_>>()
+                    .join(",");
+                format!(
+                    "{{\"ok\":true,\"text\":{},\"solutions\":{{\"vars\":[{vars}],\"rows\":[{rows}],\"count\":{},\"truncated\":{}}}}}",
+                    json_string(&v.to_text()),
+                    t.rows.len(),
+                    t.truncated
+                )
             } else if let Some(text) = v.plain_text() {
                 // Opaque text (string / SMT output) — rendered as monospace.
                 format!("{{\"ok\":true,\"text\":{},\"plain\":true}}", json_string(text))

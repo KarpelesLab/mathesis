@@ -15,8 +15,18 @@ export interface EvalResult {
   plain?: boolean
   /** A Plot/Plot3D payload to draw (present for graphics results). */
   graphics?: Graphics
+  /** A Solve result rendered as a table (variables × solutions). */
+  solutions?: Solutions
   /** Human-readable message (present when not ok). */
   error?: string
+}
+
+export interface Solutions {
+  vars: string[]
+  /** One row per solution; each cell is a TeX string aligned to `vars`. */
+  rows: string[][]
+  count: number
+  truncated: boolean
 }
 
 export type Graphics =

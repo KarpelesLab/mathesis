@@ -35,6 +35,7 @@ const messages = {
       caption: 'Every digit, exactly — no rounding, no server. Type an expression and press {enter}.',
     },
     composer: { placeholder: 'Type an expression…', stop: 'stop' },
+    sol: { count: 'no solutions | {n} solution | {n} solutions', truncated: 'first {n} shown' },
     toast: {
       copied: 'Link copied to clipboard',
       shared: 'Shared',
@@ -81,6 +82,7 @@ const messages = {
         'Chaque chiffre, exactement — sans arrondi, sans serveur. Saisissez une expression et appuyez sur {enter}.',
     },
     composer: { placeholder: 'Saisissez une expression…', stop: 'arrêter' },
+    sol: { count: 'aucune solution | {n} solution | {n} solutions', truncated: '{n} premières affichées' },
     toast: {
       copied: 'Lien copié dans le presse-papiers',
       shared: 'Partagé',
@@ -126,6 +128,7 @@ const messages = {
       caption: 'すべての桁を正確に — 丸めなし、サーバーなし。式を入力して {enter} を押してください。',
     },
     composer: { placeholder: '式を入力…', stop: '停止' },
+    sol: { count: '解なし | {n} 個の解 | {n} 個の解', truncated: '先頭 {n} 件を表示' },
     toast: {
       copied: 'リンクをクリップボードにコピーしました',
       shared: '共有しました',

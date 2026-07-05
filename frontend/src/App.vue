@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import Editor from './components/Editor.vue'
 import MathOutput from './components/MathOutput.vue'
 import Graphics from './components/Graphics.vue'
+import Solutions from './components/Solutions.vue'
 import DocsPanel from './components/DocsPanel.vue'
 import LangSwitch from './components/LangSwitch.vue'
 import {
@@ -58,7 +59,7 @@ const examples = [
   'Det[{{1, 2}, {3, 4}}]',
   'PowerMod[7, 100, 13]',
   'Fibonacci[100]',
-  'FindInstance[x + y == 10 && x - y == 2, {x, y}]',
+  'Solve[x + y == 4 && x >= 0 && y >= 0, {x, y}]',
   'LatticeReduce[{{1, 1, 1}, {-1, 0, 2}, {3, 5, 6}}]',
 ]
 
@@ -261,6 +262,7 @@ async function shareNotebook() {
               </span>
               <template v-else-if="entry.result">
                 <Graphics v-if="entry.result.graphics" :data="entry.result.graphics" />
+                <Solutions v-else-if="entry.result.solutions" :data="entry.result.solutions" />
                 <div v-else-if="isHuge(entry.result)" class="huge">
                   <code>{{ preview(entry.result.text!) }}</code>
                   <span class="huge-note">{{ entry.result.text!.length.toLocaleString() }} characters — truncated for display</span>

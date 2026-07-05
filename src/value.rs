@@ -56,12 +56,23 @@ pub enum Value {
     /// arithmetic.
     Decimal(String),
     List(Vec<Value>),
-    /// A solution / substitution set from `Solve`/`FindInstance`, rendered as
-    /// typeset rules `{x → 3, y → ½}`.
+    /// A solution / substitution set from `FindInstance`, rendered as typeset
+    /// rules `{x → 3, y → ½}`.
     Rules(Vec<(String, Value)>),
+    /// The full solution set from `Solve` — zero or more assignments, rendered
+    /// by the frontend as a table (`truncated` marks a capped enumeration).
+    Solutions { rows: Vec<Vec<(String, Value)>>, truncated: bool },
     /// The result of `Factor[..]`: an optional overall sign and (prime, power)
     /// pairs, rendered as a product.
     Factored { negative: bool, factors: Vec<(Int, u32)> },
+}
+
+/// A rendered solution set: shared variable list plus one TeX cell per variable
+/// per solution row.
+pub struct SolutionTable {
+    pub vars: Vec<String>,
+    pub rows: Vec<Vec<String>>,
+    pub truncated: bool,
 }
 
 /// Collapse a rational to an integer when it is one — the canonical form used
@@ -475,6 +486,16 @@ impl Value {
                 let inner: Vec<String> = rs.iter().map(|(k, v)| format!("{k} -> {}", v.to_text())).collect();
                 format!("{{{}}}", inner.join(", "))
             }
+            Value::Solutions { rows, .. } => {
+                let inner: Vec<String> = rows
+                    .iter()
+                    .map(|r| {
+                        let c: Vec<String> = r.iter().map(|(k, v)| format!("{k} -> {}", v.to_text())).collect();
+                        format!("{{{}}}", c.join(", "))
+                    })
+                    .collect();
+                format!("{{{}}}", inner.join(", "))
+            }
             Value::Factored { negative, factors } => {
                 let mut parts: Vec<String> = Vec::new();
                 if *negative {
@@ -538,6 +559,17 @@ impl Value {
                     format!("\\left\\{{{}\\right\\}}", inner.join(",\\ "))
                 }
             }
+            Value::Solutions { rows, .. } => {
+                let inner: Vec<String> = rows
+                    .iter()
+                    .map(|r| {
+                        let c: Vec<String> =
+                            r.iter().map(|(k, v)| format!("{k} \\to {}", v.to_tex())).collect();
+                        format!("\\left\\{{{}\\right\\}}", c.join(",\\ "))
+                    })
+                    .collect();
+                format!("\\left\\{{{}\\right\\}}", inner.join(",\\ "))
+            }
             Value::Factored { negative, factors } => {
                 let mut parts: Vec<String> = Vec::new();
                 if *negative {
@@ -578,6 +610,31 @@ impl Value {
             Value::Graphics(s) => Some(s),
             _ => None,
         }
+    }
+
+    /// For a `Solve` result, a rectangular table (variables × solutions) for the
+    /// frontend to render. Cells are TeX, aligned to the shared variable list.
+    pub fn solutions(&self) -> Option<SolutionTable> {
+        let Value::Solutions { rows, truncated } = self else {
+            return None;
+        };
+        let mut vars: Vec<String> = Vec::new();
+        for r in rows {
+            for (k, _) in r {
+                if !vars.contains(k) {
+                    vars.push(k.clone());
+                }
+            }
+        }
+        let cells = rows
+            .iter()
+            .map(|r| {
+                vars.iter()
+                    .map(|v| r.iter().find(|(k, _)| k == v).map(|(_, val)| val.to_tex()).unwrap_or_default())
+                    .collect()
+            })
+            .collect();
+        Some(SolutionTable { vars, rows: cells, truncated: *truncated })
     }
 
     /// The decimal approximation to show *alongside* an exact result, when it

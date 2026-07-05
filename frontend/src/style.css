@@ -412,6 +412,55 @@ kbd {
   overflow-x: auto;
 }
 
+/* Solve results — a solutions table */
+.solutions {
+  margin-top: 0.3rem;
+}
+.sol-caption {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--amber);
+  margin-bottom: 0.5rem;
+}
+.sol-trunc {
+  color: var(--dust);
+}
+.sol-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+  border: 1px solid var(--rule);
+  border-radius: 9px;
+}
+.sol-table {
+  border-collapse: collapse;
+  min-width: 100%;
+  font-size: 1.02rem;
+  color: var(--chalk);
+}
+.sol-table th,
+.sol-table td {
+  padding: 0.4rem 0.9rem;
+  text-align: center;
+  border-bottom: 1px solid var(--rule-soft);
+  white-space: nowrap;
+}
+.sol-table thead th {
+  background: var(--slate);
+  color: var(--amber);
+  border-bottom: 1px solid var(--rule);
+  position: sticky;
+  top: 0;
+}
+.sol-table tbody tr:last-child td {
+  border-bottom: none;
+}
+.sol-table tbody tr:hover td {
+  background: var(--slate-hi);
+}
+.sol-table .katex {
+  font-size: 1em;
+}
+
 /* plots (Plot / Plot3D) */
 .graphics {
   margin-top: 0.35rem;
