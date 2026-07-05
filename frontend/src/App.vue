@@ -5,6 +5,7 @@ import Editor from './components/Editor.vue'
 import MathOutput from './components/MathOutput.vue'
 import Graphics from './components/Graphics.vue'
 import Solutions from './components/Solutions.vue'
+import SolveBuilder from './components/SolveBuilder.vue'
 import DocsPanel from './components/DocsPanel.vue'
 import LangSwitch from './components/LangSwitch.vue'
 import {
@@ -38,6 +39,7 @@ const counter = ref(0)
 const version = ref('')
 const busy = ref(false)
 const showDocs = ref(false)
+const showBuilder = ref(false)
 const editor = ref<InstanceType<typeof Editor> | null>(null)
 const scroller = ref<HTMLElement | null>(null)
 const toast = ref('')
@@ -180,6 +182,11 @@ function insertExample(ex: string) {
   showDocs.value = false
 }
 
+function onBuilderInsert(expr: string) {
+  editor.value?.setText(expr)
+  showBuilder.value = false
+}
+
 async function shareCell(entry: Entry) {
   const url = singleShareUrl(entry.input)
   const preview = entry.result?.ok ? `${entry.input} = ${entry.result.text}` : entry.input
@@ -311,6 +318,7 @@ async function shareNotebook() {
           :placeholder="t('composer.placeholder')"
           @submit="run"
           @history="browseHistory"
+          @open-builder="showBuilder = true"
         />
         <span class="hint">{{ busy ? '…' : '↵' }}</span>
       </div>
@@ -323,6 +331,8 @@ async function shareNotebook() {
     <transition name="docs">
       <DocsPanel v-if="showDocs" @close="showDocs = false" @insert="insertExample" />
     </transition>
+
+    <SolveBuilder v-if="showBuilder" @insert="onBuilderInsert" @close="showBuilder = false" />
 
     <div class="version" v-if="version">{{ t('version') }} v{{ version }}</div>
   </div>

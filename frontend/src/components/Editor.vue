@@ -25,6 +25,7 @@ const props = defineProps<{ placeholder?: string }>()
 const emit = defineEmits<{
   (e: 'submit', value: string): void
   (e: 'history', dir: -1 | 1): void
+  (e: 'openBuilder'): void
 }>()
 
 const host = ref<HTMLDivElement | null>(null)
@@ -83,7 +84,7 @@ onMounted(() => {
         history(),
         placeholderComp.of(placeholder(props.placeholder ?? '')),
         autocompletion({
-          override: [completionSource(getLang)],
+          override: [completionSource(getLang, () => emit('openBuilder'))],
           defaultKeymap: false,
           activateOnTyping: true,
           icons: false,

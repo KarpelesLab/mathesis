@@ -50,8 +50,9 @@ function applyCall(view: import('@codemirror/view').EditorView, completion: Comp
   })
 }
 
-/** Completion source offering the builtins, localized. */
-export function completionSource(getLang: () => Lang): CompletionSource {
+/** Completion source offering the builtins, localized. `openBuilder` is invoked
+ *  when the user picks the visual Solve builder entry. */
+export function completionSource(getLang: () => Lang, openBuilder: () => void): CompletionSource {
   return (ctx: CompletionContext): CompletionResult | null => {
     const word = ctx.matchBefore(/[A-Za-z][A-Za-z0-9]*/)
     if (!word || (word.from === word.to && !ctx.explicit)) return null
@@ -63,6 +64,18 @@ export function completionSource(getLang: () => Lang): CompletionSource {
       info: f.desc[lang],
       apply: f.nullary ? undefined : applyCall,
     }))
+    // When the user is typing Solve, offer the visual builder.
+    const typed = ctx.state.sliceDoc(word.from, word.to).toLowerCase()
+    if ('solve'.startsWith(typed) || 'findinstance'.startsWith(typed)) {
+      options.push({
+        label: 'SolveBuilder',
+        displayLabel: '⊞ Solve builder',
+        type: 'keyword',
+        detail: 'visual',
+        boost: 2,
+        apply: () => openBuilder(),
+      })
+    }
     return { from: word.from, options, validFor: /^[A-Za-z][A-Za-z0-9]*$/ }
   }
 }
