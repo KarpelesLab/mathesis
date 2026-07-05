@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Mathesis — exact mathematics, in your browser">
+  <rect width="1200" height="630" fill="#0e1915" />
+  <rect x="24" y="24" width="1152" height="582" rx="20" fill="none" stroke="#223129" stroke-width="2" />
+
+  <!-- ∴ signature mark -->
+  <g fill="#e7b85c" transform="translate(120, 250)">
+    <circle cx="44" cy="0" r="19" />
+    <circle cx="8" cy="70" r="19" />
+    <circle cx="80" cy="70" r="19" />
+  </g>
+
+  <text x="272" y="292" font-family="Georgia, 'Times New Roman', serif" font-size="110" font-weight="700" fill="#ece7da">Mathesis</text>
+  <text x="276" y="352" font-family="Georgia, 'Times New Roman', serif" font-size="38" font-style="italic" fill="#8c9a91">exact mathematics, in your browser</text>
+
+  <g font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="30" fill="#c3cbc2">
+    <text x="120" y="470">1/3 + 1/3 + 1/3</text>
+    <text x="470" y="470" fill="#56655d">=</text>
+    <text x="510" y="470" fill="#e7b85c">1</text>
+
+    <text x="120" y="522">Sqrt[2]</text>
+    <text x="470" y="522" fill="#56655d">=</text>
+    <text x="510" y="522" fill="#e7b85c">√2</text>
+
+    <text x="700" y="470">2^128</text>
+    <text x="700" y="522" fill="#56655d">no server · no sign-up</text>
+  </g>
+</svg>
