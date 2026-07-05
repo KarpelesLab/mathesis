@@ -5,7 +5,14 @@ import type { Completion, CompletionContext, CompletionResult, CompletionSource 
 import { StateField } from '@codemirror/state'
 import { showTooltip, type Tooltip } from '@codemirror/view'
 import { CATEGORIES } from './docs'
-import type { Lang } from './i18n'
+import { i18n, type Lang } from './i18n'
+
+// The argument part of a syntax, e.g. "Solve[c, vars]" → "[c, vars]", so a
+// completion row doesn't repeat the function name (label + detail).
+function argDetail(syntax: string): string | undefined {
+  const b = syntax.indexOf('[')
+  return b < 0 ? undefined : syntax.slice(b)
+}
 
 interface FnInfo {
   name: string
@@ -60,7 +67,7 @@ export function completionSource(getLang: () => Lang, openBuilder: () => void): 
     const options: Completion[] = FN_INFO.map((f) => ({
       label: f.name,
       type: f.nullary ? 'constant' : 'function',
-      detail: f.nullary ? undefined : f.syntax,
+      detail: f.nullary ? undefined : argDetail(f.syntax),
       info: f.desc[lang],
       apply: f.nullary ? undefined : applyCall,
     }))
@@ -163,8 +170,8 @@ function renderSig(info: FnInfo, argIndex: number, desc: string): string {
 }
 
 /** A StateField that shows a signature tooltip when the cursor is inside a
- *  known function call. */
-export function signatureField(getLang: () => Lang) {
+ *  known function call. `openBuilder` is offered inside Solve/FindInstance. */
+export function signatureField(getLang: () => Lang, openBuilder: () => void) {
   interface Keyed extends Tooltip {
     key?: string
   }
@@ -177,6 +184,7 @@ export function signatureField(getLang: () => Lang) {
       if (!info || info.nullary) return null
       const key = `${ctx.head}:${ctx.argIndex}:${getLang()}`
       if (value && value.key === key) return value
+      const buildable = info.name === 'Solve' || info.name === 'FindInstance'
       const tip: Keyed = {
         pos: tr.state.selection.main.head,
         above: true,
@@ -186,6 +194,18 @@ export function signatureField(getLang: () => Lang) {
           const dom = document.createElement('div')
           dom.className = 'cm-sig'
           dom.innerHTML = renderSig(info, ctx.argIndex, info.desc[getLang()])
+          if (buildable) {
+            const btn = document.createElement('button')
+            btn.className = 'sig-builder'
+            btn.textContent = `⊞ ${i18n.global.t('builder.open')}`
+            // mousedown (not click) so the editor keeps focus and the tooltip
+            // isn't dismissed before the handler runs.
+            btn.addEventListener('mousedown', (e) => {
+              e.preventDefault()
+              openBuilder()
+            })
+            dom.appendChild(btn)
+          }
           return { dom }
         },
       }

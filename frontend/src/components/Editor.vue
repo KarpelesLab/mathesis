@@ -110,6 +110,18 @@ const theme = EditorView.theme({
     fontSize: '0.85rem',
     color: 'var(--dust)',
   },
+  '.sig-builder': {
+    display: 'block',
+    marginTop: '0.5rem',
+    fontFamily: 'var(--font-mono)',
+    fontSize: '0.8rem',
+    color: 'var(--amber)',
+    background: 'var(--amber-soft)',
+    border: 'none',
+    borderRadius: '6px',
+    padding: '0.3rem 0.6rem',
+    cursor: 'pointer',
+  },
 })
 
 function currentText(): string {
@@ -145,7 +157,7 @@ onMounted(() => {
           activateOnTyping: true,
           icons: false,
         }),
-        signatureField(getLang),
+        signatureField(getLang, () => emit('openBuilder')),
         keymap.of([
           // When the completion popup is open these accept/navigate it; when it
           // is closed they fall through (the commands return false) to submit
