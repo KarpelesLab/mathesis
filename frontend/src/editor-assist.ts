@@ -59,16 +59,18 @@ function applyCall(view: import('@codemirror/view').EditorView, completion: Comp
 
 /** Completion source offering the builtins, localized. `openBuilder` is invoked
  *  when the user picks the visual Solve builder entry. */
+type WithDesc = Completion & { desc?: string }
+
 export function completionSource(getLang: () => Lang, openBuilder: () => void): CompletionSource {
   return (ctx: CompletionContext): CompletionResult | null => {
     const word = ctx.matchBefore(/[A-Za-z][A-Za-z0-9]*/)
     if (!word || (word.from === word.to && !ctx.explicit)) return null
     const lang = getLang()
-    const options: Completion[] = FN_INFO.map((f) => ({
+    const options: WithDesc[] = FN_INFO.map((f) => ({
       label: f.name,
       type: f.nullary ? 'constant' : 'function',
       detail: f.nullary ? undefined : argDetail(f.syntax),
-      info: f.desc[lang],
+      desc: f.desc[lang],
       apply: f.nullary ? undefined : applyCall,
     }))
     // When the user is typing Solve, offer the visual builder.
@@ -76,15 +78,26 @@ export function completionSource(getLang: () => Lang, openBuilder: () => void): 
     if ('solve'.startsWith(typed) || 'findinstance'.startsWith(typed)) {
       options.push({
         label: 'SolveBuilder',
-        displayLabel: '⊞ Solve builder',
+        displayLabel: `⊞ ${i18n.global.t('builder.open')}`,
         type: 'keyword',
-        detail: 'visual',
+        desc: i18n.global.t('builder.title'),
         boost: 2,
         apply: () => openBuilder(),
       })
     }
     return { from: word.from, options, validFor: /^[A-Za-z][A-Za-z0-9]*$/ }
   }
+}
+
+/** Renders a completion's description as a second line under its name. Plugged
+ *  in via `autocompletion({ addToOptions })`. */
+export function descRenderer(completion: Completion): Node | null {
+  const desc = (completion as WithDesc).desc
+  if (!desc) return null
+  const el = document.createElement('div')
+  el.className = 'cm-completionDesc'
+  el.textContent = desc
+  return el
 }
 
 // --- signature help ---------------------------------------------------------

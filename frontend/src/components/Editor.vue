@@ -15,7 +15,7 @@ import {
   closeCompletion,
   moveCompletionSelection,
 } from '@codemirror/autocomplete'
-import { completionSource, signatureField } from '../editor-assist'
+import { completionSource, descRenderer, signatureField } from '../editor-assist'
 import type { Lang } from '../i18n'
 
 const { locale } = useI18n({ useScope: 'global' })
@@ -30,6 +30,7 @@ const emit = defineEmits<{
 
 const host = ref<HTMLDivElement | null>(null)
 let view: EditorView | null = null
+let resizeObs: ResizeObserver | null = null
 // Placeholder lives in its own compartment so it can be swapped when the UI
 // language changes.
 const placeholderComp = new Compartment()
@@ -64,14 +65,23 @@ const theme = EditorView.theme({
     color: 'var(--chalk)',
     boxShadow: '0 10px 34px rgba(0, 0, 0, 0.5)',
   },
+  // Match the width of the input (set from a ResizeObserver on the host).
+  '.cm-tooltip.cm-tooltip-autocomplete': {
+    width: 'var(--cm-pop-width, 22rem)',
+    maxWidth: '95vw',
+  },
   '.cm-tooltip.cm-tooltip-autocomplete > ul': {
     fontFamily: 'var(--font-mono)',
     fontSize: '0.9rem',
-    maxHeight: '15rem',
+    maxHeight: '17rem',
+    width: '100%',
   },
+  // Two lines per option: name (+ args) on the first, description on the second.
   '.cm-tooltip-autocomplete ul li': {
-    padding: '0.28rem 0.65rem',
+    display: 'block',
+    padding: '0.4rem 0.7rem',
     color: 'var(--chalk-dim)',
+    borderBottom: '1px solid var(--rule-soft)',
   },
   '.cm-tooltip-autocomplete ul li[aria-selected]': {
     background: 'var(--amber-soft)',
@@ -79,10 +89,19 @@ const theme = EditorView.theme({
   },
   '.cm-completionLabel': { color: 'var(--chalk)' },
   '.cm-completionDetail': {
-    marginLeft: '0.6rem',
+    marginLeft: '0.5rem',
     color: 'var(--faint)',
     fontStyle: 'normal',
     fontSize: '0.85em',
+  },
+  '.cm-completionDesc': {
+    display: 'block',
+    marginTop: '0.15rem',
+    fontFamily: 'var(--font-serif)',
+    fontSize: '0.82rem',
+    lineHeight: '1.4',
+    color: 'var(--dust)',
+    whiteSpace: 'normal',
   },
   '.cm-completionMatchedText': {
     color: 'var(--amber)',
@@ -156,6 +175,7 @@ onMounted(() => {
           defaultKeymap: false,
           activateOnTyping: true,
           icons: false,
+          addToOptions: [{ render: descRenderer, position: 90 }],
         }),
         signatureField(getLang, () => emit('openBuilder')),
         keymap.of([
@@ -193,6 +213,12 @@ onMounted(() => {
     }),
   })
   view.focus()
+
+  // Keep the completion popup's width in sync with the input width.
+  const sync = () => host.value?.style.setProperty('--cm-pop-width', `${host.value.clientWidth}px`)
+  sync()
+  resizeObs = new ResizeObserver(sync)
+  resizeObs.observe(host.value!)
 })
 
 watch(
@@ -203,6 +229,8 @@ watch(
 )
 
 onBeforeUnmount(() => {
+  resizeObs?.disconnect()
+  resizeObs = null
   view?.destroy()
   view = null
 })
