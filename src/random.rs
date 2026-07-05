@@ -164,11 +164,16 @@ pub fn random_prime(args: &[Value]) -> EResult<Value> {
     if hi < lo {
         return err("RandomPrime: no prime in the range");
     }
+    // Pick a uniform point in the range, then take the next prime at or above it
+    // — one efficient prime search (`next_prime` sieves as it goes) instead of
+    // ~ln(hi) independent primality tests, so even a 2048-bit range finishes
+    // quickly. Retry only on the rare overshoot past `hi` near the top.
     let range = hi.sub(&lo).add(&one());
     for _ in 0..PRIME_ATTEMPTS {
-        let cand = lo.add(&Int::random_below(&range, &mut Csprng).unwrap());
-        if cand.is_prime_bpsw() {
-            return Ok(Value::Int(cand));
+        let r = lo.add(&Int::random_below(&range, &mut Csprng).unwrap());
+        let p = r.sub(&one()).next_prime(); // smallest prime >= r
+        if p <= hi {
+            return Ok(Value::Int(p));
         }
     }
     err("RandomPrime: no prime found in the range")
