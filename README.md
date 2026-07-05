@@ -90,7 +90,10 @@ Builtins (all delegating to `puremp`):
   `Log` (`Log[x]` natural, `Log[b, x]` base `b`), `Log2`, `Log10`; `Sin`, `Cos`,
   `Tan`, `ArcSin`, `ArcCos`, `ArcTan` (`ArcTan[x, y]` = atan2); `Sinh`, `Cosh`,
   `Tanh`, `ArcSinh`, `ArcCosh`, `ArcTanh`; the special functions `Erf`, `Erfc`,
-  and the Riemann zeta `Zeta`.
+  the Riemann zeta `Zeta`, `Gamma`, `LogGamma`, and Bessel `BesselJ`/`BesselI`;
+  and `Identify` — an inverse symbolic calculator that guesses a closed form for
+  a high-precision number (`Identify[Pi^2/6]` → `π²/6`, `Identify[Zeta[3]]` →
+  `ζ(3)`).
 - **Complex** — the imaginary unit `I`, plus `Re`, `Im`, `Conjugate`, `Abs`,
   `Arg`. Kept **exact** (Gaussian-rational) when possible — `(1 + I)^2` → `2 I`,
   `Sqrt[-4]` → `2 I`, `1/(1 + I)` → `1/2 - 1/2 I` — and an arbitrary-precision

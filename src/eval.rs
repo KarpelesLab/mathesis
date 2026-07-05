@@ -231,6 +231,18 @@ fn call(head: &str, args: &[Value]) -> EResult<Value> {
         "Erf" => real_unary(head, args, Float::erf),
         "Erfc" => real_unary(head, args, Float::erfc),
         "Zeta" => real_unary(head, args, Float::zeta),
+        "Gamma" => real_unary(head, args, Float::gamma),
+        "LogGamma" => real_unary(head, args, Float::ln_gamma),
+        "BesselJ" => bessel(head, args, Float::bessel_j),
+        "BesselI" => bessel(head, args, Float::bessel_i),
+        "Identify" => {
+            arity(head, args, 1)?;
+            let x = value::to_float(&args[0])?;
+            match puremp::identify(&x, 256) {
+                Some(id) => Ok(Value::Text(id.to_string())),
+                None => err("Identify: no closed form found at this precision"),
+            }
+        }
         "Log" => log(head, args),
         "Log2" => {
             arity(head, args, 1)?;
@@ -580,6 +592,18 @@ fn real_unary(
     arity(head, args, 1)?;
     let x = value::to_float(&args[0])?;
     value::real(f(&x, WORK_BITS, NEAR))
+}
+
+/// `BesselJ[n, x]` / `BesselI[n, x]` — an integer order `n` and a real argument.
+fn bessel(
+    head: &str,
+    args: &[Value],
+    f: impl Fn(&Float, i64, u64, RoundingMode) -> Float,
+) -> EResult<Value> {
+    arity(head, args, 2)?;
+    let n = value::to_i64(&value::as_int(&args[0])?)?;
+    let x = value::to_float(&args[1])?;
+    value::real(f(&x, n, WORK_BITS, NEAR))
 }
 
 /// `Log[x]` is the natural logarithm; `Log[b, x]` is the logarithm base `b`.

@@ -113,6 +113,11 @@ export const CATEGORIES: Category[] = [
       { name: 'Erf', syntax: 'Erf[x]', examples: ['Erf[1]'], desc: t('The error function.', "La fonction d'erreur.", '誤差関数。') },
       { name: 'Erfc', syntax: 'Erfc[x]', examples: ['Erfc[1]'], desc: t('The complementary error function, 1 − Erf[x].', "La fonction d'erreur complémentaire, 1 − Erf[x].", '相補誤差関数（1 − Erf[x]）。') },
       { name: 'Zeta', syntax: 'Zeta[s]', examples: ['Zeta[2]', 'Zeta[4]'], desc: t('The Riemann zeta function.', 'La fonction zêta de Riemann.', 'リーマンゼータ関数。') },
+      { name: 'Gamma', syntax: 'Gamma[x]', examples: ['Gamma[5]', 'N[Gamma[1/2], 20]'], desc: t('The gamma function (Gamma[n] = (n−1)!).', 'La fonction gamma (Gamma[n] = (n−1)!).', 'ガンマ関数（Gamma[n] = (n−1)!）。') },
+      { name: 'LogGamma', syntax: 'LogGamma[x]', examples: ['LogGamma[10]'], desc: t('The logarithm of the gamma function.', 'Le logarithme de la fonction gamma.', 'ガンマ関数の対数。') },
+      { name: 'BesselJ', syntax: 'BesselJ[n, x]', examples: ['N[BesselJ[0, 1], 15]'], desc: t('The Bessel function of the first kind, order n.', 'La fonction de Bessel de première espèce, ordre n.', '第一種ベッセル関数（次数 n）。') },
+      { name: 'BesselI', syntax: 'BesselI[n, x]', examples: ['N[BesselI[1, 2], 15]'], desc: t('The modified Bessel function of the first kind, order n.', 'La fonction de Bessel modifiée de première espèce, ordre n.', '第一種変形ベッセル関数（次数 n）。') },
+      { name: 'Identify', syntax: 'Identify[x]', examples: ['Identify[Pi^2/6]', 'Identify[Zeta[3]]', 'Identify[Sqrt[2] + 1]'], desc: t('Inverse symbolic calculator — guess a closed form for a high-precision number (π²/6, √2 + 1, …).', 'Calculatrice symbolique inverse — devine une forme close pour un nombre en haute précision (π²/6, √2 + 1, …).', '逆記号計算機 — 高精度の数から閉じた形を推定（π²/6、√2 + 1 など）。') },
     ],
   },
   {

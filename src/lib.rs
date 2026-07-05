@@ -412,6 +412,16 @@ mod tests {
     }
 
     #[test]
+    fn gamma_bessel_identify() {
+        assert!(out("Gamma[5]").contains("\"text\":\"24\""));
+        assert!(out("N[Gamma[1/2], 15]").contains("1.7724538509055"), "{}", out("N[Gamma[1/2], 15]"));
+        assert!(out("N[BesselJ[0, 1], 12]").contains("0.7651976865"), "{}", out("N[BesselJ[0, 1], 12]"));
+        // The inverse symbolic calculator recognises closed forms.
+        assert!(out("Identify[Pi^2/6]").contains("π"), "{}", out("Identify[Pi^2/6]"));
+        assert!(out("Identify[Zeta[3]]").contains("ζ(3)"), "{}", out("Identify[Zeta[3]]"));
+    }
+
+    #[test]
     fn errors_are_reported() {
         assert!(out("1/0").contains("\"ok\":false"));
         assert!(out("Foo[1]").contains("unknown function"));
