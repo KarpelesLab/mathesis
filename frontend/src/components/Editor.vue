@@ -54,6 +54,62 @@ const theme = EditorView.theme({
   '.cm-selectionBackground, ::selection': {
     backgroundColor: 'var(--amber-soft)',
   },
+  // Autocomplete popup + signature tooltip. These must live in the editor theme
+  // (not global CSS) to override CodeMirror's base theme, which is injected into
+  // <head> after our stylesheet.
+  '.cm-tooltip': {
+    background: 'var(--slate-hi)',
+    border: '1px solid var(--rule)',
+    borderRadius: '8px',
+    color: 'var(--chalk)',
+    boxShadow: '0 10px 34px rgba(0, 0, 0, 0.5)',
+  },
+  '.cm-tooltip.cm-tooltip-autocomplete > ul': {
+    fontFamily: 'var(--font-mono)',
+    fontSize: '0.9rem',
+    maxHeight: '15rem',
+  },
+  '.cm-tooltip-autocomplete ul li': {
+    padding: '0.28rem 0.65rem',
+    color: 'var(--chalk-dim)',
+  },
+  '.cm-tooltip-autocomplete ul li[aria-selected]': {
+    background: 'var(--amber-soft)',
+    color: 'var(--chalk)',
+  },
+  '.cm-completionLabel': { color: 'var(--chalk)' },
+  '.cm-completionDetail': {
+    marginLeft: '0.6rem',
+    color: 'var(--faint)',
+    fontStyle: 'normal',
+    fontSize: '0.85em',
+  },
+  '.cm-completionMatchedText': {
+    color: 'var(--amber)',
+    textDecoration: 'none',
+    fontWeight: '600',
+  },
+  '.cm-completionInfo': {
+    margin: '0 0.4rem',
+    padding: '0.5rem 0.7rem',
+    maxWidth: '20rem',
+    background: 'var(--slate-hi)',
+    border: '1px solid var(--rule)',
+    borderRadius: '8px',
+    color: 'var(--chalk-dim)',
+    fontFamily: 'var(--font-serif)',
+    fontSize: '0.9rem',
+    lineHeight: '1.5',
+  },
+  '.cm-sig': { padding: '0.45rem 0.65rem', maxWidth: '24rem' },
+  '.sig-syntax': { fontFamily: 'var(--font-mono)', fontSize: '0.9rem', color: 'var(--chalk)' },
+  '.sig-active': { color: 'var(--amber)' },
+  '.sig-desc': {
+    marginTop: '0.25rem',
+    fontFamily: 'var(--font-serif)',
+    fontSize: '0.85rem',
+    color: 'var(--dust)',
+  },
 })
 
 function currentText(): string {
