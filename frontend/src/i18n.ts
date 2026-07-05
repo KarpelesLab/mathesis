@@ -34,7 +34,7 @@ const messages = {
       approx: 'a calculator rounds to',
       caption: 'Every digit, exactly — no rounding, no server. Type an expression and press {enter}.',
     },
-    composer: { placeholder: 'Type an expression…', stop: 'stop' },
+    composer: { placeholder: 'Type an expression…', stop: 'stop', slow: 'This is taking some time — click stop to cancel' },
     sol: { count: 'no solutions | {n} solution | {n} solutions', truncated: 'first {n} shown' },
     builder: {
       open: 'Solve builder',
@@ -94,7 +94,7 @@ const messages = {
       caption:
         'Chaque chiffre, exactement — sans arrondi, sans serveur. Saisissez une expression et appuyez sur {enter}.',
     },
-    composer: { placeholder: 'Saisissez une expression…', stop: 'arrêter' },
+    composer: { placeholder: 'Saisissez une expression…', stop: 'arrêter', slow: 'Cela prend du temps — cliquez sur arrêter pour annuler' },
     sol: { count: 'aucune solution | {n} solution | {n} solutions', truncated: '{n} premières affichées' },
     builder: {
       open: 'Assistant Solve',
@@ -153,7 +153,7 @@ const messages = {
       approx: '電卓が丸めると',
       caption: 'すべての桁を正確に — 丸めなし、サーバーなし。式を入力して {enter} を押してください。',
     },
-    composer: { placeholder: '式を入力…', stop: '停止' },
+    composer: { placeholder: '式を入力…', stop: '停止', slow: '時間がかかっています — 停止で中止できます' },
     sol: { count: '解なし | {n} 個の解 | {n} 個の解', truncated: '先頭 {n} 件を表示' },
     builder: {
       open: 'Solve ビルダー',

@@ -155,11 +155,12 @@ for its own share button. On supported devices this opens the native share sheet
 ## Long-running computations
 
 The engine runs in a **Web Worker**, so the UI never freezes — even on an
-accidental `3000000!`. A computation that exceeds a wall-clock budget (a few
-seconds) is force-stopped by terminating the worker (pure wasm can't be
-interrupted cooperatively), and there's a **Stop** button to abort sooner.
-Results large enough to choke the renderer are shown as truncated text instead
-of typeset math.
+accidental `3000000!`. There is no wall-clock limit: a computation runs until it
+finishes or you stop it. After a few seconds a running cell shows a *"this is
+taking some time — click stop to cancel"* notice, and the **Stop** button
+terminates the worker (pure wasm can't be interrupted cooperatively) and
+respawns a fresh one. Results large enough to choke the renderer are shown as
+truncated text instead of typeset math.
 
 ## Repository layout
 

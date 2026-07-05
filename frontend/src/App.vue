@@ -13,7 +13,6 @@ import {
   CancelledError,
   engineVersion,
   evaluateInput,
-  TimeoutError,
   type EvalResult,
 } from './engine'
 import {
@@ -30,7 +29,12 @@ interface Entry {
   /** null while the computation is in flight. */
   result: EvalResult | null
   pending: boolean
+  /** Set once a computation has been running long enough to warrant a notice. */
+  slow?: boolean
 }
+
+/** How long a computation runs before we surface the "taking a while" notice. */
+const SLOW_NOTICE_MS = 5000
 
 const { t } = useI18n({ useScope: 'global' })
 
@@ -112,19 +116,20 @@ async function run(input: string) {
     }
   }
 
+  // No wall-clock limit — a long computation runs until it finishes or the user
+  // stops it. After a few seconds we surface a notice pointing at Stop.
+  const slowTimer = setTimeout(() => {
+    const cell = entries.value.find((e) => e.n === n)
+    if (cell?.pending) cell.slow = true
+  }, SLOW_NOTICE_MS)
+
   try {
     settle(await evaluateInput(input))
   } catch (e) {
-    let error: string
-    if (e instanceof TimeoutError) {
-      error = `computation stopped after ${Math.round(e.ms / 1000)}s — try a smaller input`
-    } else if (e instanceof CancelledError) {
-      error = 'computation cancelled'
-    } else {
-      error = `engine error: ${String(e)}`
-    }
+    const error = e instanceof CancelledError ? 'computation cancelled' : `engine error: ${String(e)}`
     settle({ ok: false, error })
   } finally {
+    clearTimeout(slowTimer)
     busy.value = false
     await scrollToBottom()
   }
@@ -283,6 +288,7 @@ async function shareNotebook() {
             <div class="result">
               <span v-if="entry.pending" class="pending">
                 <span class="dots" aria-label="computing"><i></i><i></i><i></i></span>
+                <span v-if="entry.slow" class="slow-note">{{ t('composer.slow') }}</span>
                 <button class="stop-inline" :title="t('composer.stop')" @click="stop">
                   {{ t('composer.stop') }}
                 </button>

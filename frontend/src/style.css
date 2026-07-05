@@ -667,6 +667,12 @@ kbd {
   display: inline-flex;
   align-items: center;
   gap: 0.8rem;
+  flex-wrap: wrap;
+}
+.slow-note {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--dust);
 }
 .dots {
   display: inline-flex;

@@ -33,13 +33,6 @@ export type Graphics =
   | { kind: 'plot2d'; var: string; xmin: number; xmax: number; series: { points: [number, number | null][] }[] }
   | { kind: 'plot3d'; xmin: number; xmax: number; ymin: number; ymax: number; z: (number | null)[][] }
 
-export class TimeoutError extends Error {
-  constructor(public readonly ms: number) {
-    super(`computation exceeded ${ms} ms`)
-    this.name = 'TimeoutError'
-  }
-}
-
 export class CancelledError extends Error {
   constructor() {
     super('computation cancelled')
@@ -47,14 +40,10 @@ export class CancelledError extends Error {
   }
 }
 
-/** Default wall-clock budget before a computation is force-stopped. */
-export const DEFAULT_TIMEOUT_MS = 6000
-
 interface Pending {
   id: number
   resolve: (r: EvalResult) => void
   reject: (e: Error) => void
-  timer: ReturnType<typeof setTimeout>
 }
 
 let worker: Worker | null = null
@@ -75,7 +64,6 @@ function spawn(): Worker {
       versionWaiters.forEach((r) => r(msg.version))
       versionWaiters = []
     } else if (msg?.type === 'result' && pending && pending.id === msg.id) {
-      clearTimeout(pending.timer)
       const p = pending
       pending = null
       p.resolve(msg.result as EvalResult)
@@ -107,15 +95,16 @@ function rebuild() {
 
 function failPending(err: Error) {
   if (pending) {
-    clearTimeout(pending.timer)
     const p = pending
     pending = null
     p.reject(err)
   }
 }
 
-/** Evaluate one line of input, rejecting with `TimeoutError` if it runs too long. */
-export function evaluateInput(input: string, timeoutMs = DEFAULT_TIMEOUT_MS): Promise<EvalResult> {
+/** Evaluate one line of input. The computation runs until it finishes, the
+ *  worker crashes, or the caller cancels it via `cancelCurrent` — there is no
+ *  wall-clock limit. */
+export function evaluateInput(input: string): Promise<EvalResult> {
   if (pending) {
     return Promise.reject(new Error('a computation is already running'))
   }
@@ -123,17 +112,7 @@ export function evaluateInput(input: string, timeoutMs = DEFAULT_TIMEOUT_MS): Pr
   const id = ++seq
 
   return new Promise<EvalResult>((resolve, reject) => {
-    const timer = setTimeout(() => {
-      if (pending && pending.id === id) {
-        const p = pending
-        pending = null
-        p.reject(new TimeoutError(timeoutMs))
-      }
-      // Kill the (still-busy) worker so it stops computing and frees memory.
-      rebuild()
-    }, timeoutMs)
-
-    pending = { id, resolve, reject, timer }
+    pending = { id, resolve, reject }
     w.postMessage({ type: 'eval', id, input })
   })
 }
@@ -143,7 +122,6 @@ export function cancelCurrent(): boolean {
   if (!pending) return false
   const p = pending
   pending = null
-  clearTimeout(p.timer)
   rebuild()
   p.reject(new CancelledError())
   return true
