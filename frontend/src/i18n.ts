@@ -72,7 +72,7 @@ const messages = {
       },
       {
         h: 'Entering expressions',
-        p: 'Use the operators + - * / ^ and postfix ! (factorial); group with parentheses. Call functions with square brackets, Head[arg, …], and write lists with braces, {a, b, c}. % refers to the previous result. Text for the SMT solver goes in double quotes, "…".',
+        p: 'Use the operators + - * / ^ and postfix ! (factorial); group with parentheses. Call functions with square brackets, Head[arg, …], and write lists with braces, {a, b, c}. Assign a variable with =, e.g. x = RandomPrime[1000], then reuse x in later cells (== stays equality). % refers to the previous result. Text for the SMT solver goes in double quotes, "…".',
       },
       {
         h: 'Exact, with a decimal alongside',
@@ -132,7 +132,7 @@ const messages = {
       },
       {
         h: 'Saisir des expressions',
-        p: 'Utilisez les opérateurs + - * / ^ et le ! postfixé (factorielle) ; groupez avec des parenthèses. Appelez les fonctions avec des crochets, Head[arg, …], et écrivez les listes avec des accolades, {a, b, c}. % désigne le résultat précédent. Le texte destiné au solveur SMT se met entre guillemets doubles, "…".',
+        p: 'Utilisez les opérateurs + - * / ^ et le ! postfixé (factorielle) ; groupez avec des parenthèses. Appelez les fonctions avec des crochets, Head[arg, …], et écrivez les listes avec des accolades, {a, b, c}. Affectez une variable avec =, p. ex. x = RandomPrime[1000], puis réutilisez x dans les cellules suivantes (== reste l’égalité). % désigne le résultat précédent. Le texte destiné au solveur SMT se met entre guillemets doubles, "…".',
       },
       {
         h: 'Exact, avec la valeur décimale',
@@ -191,7 +191,7 @@ const messages = {
       },
       {
         h: '式の入力',
-        p: '演算子 + - * / ^ と後置の !（階乗）を使い、括弧でまとめます。関数は角括弧 Head[引数, …] で呼び出し、リストは波括弧 {a, b, c} で書きます。% は直前の結果を指します。SMT ソルバーに渡す文字列は二重引用符 "…" で囲みます。',
+        p: '演算子 + - * / ^ と後置の !（階乗）を使い、括弧でまとめます。関数は角括弧 Head[引数, …] で呼び出し、リストは波括弧 {a, b, c} で書きます。= で変数に代入でき（例: x = RandomPrime[1000]）、以降のセルで x を再利用できます（== は等値のまま）。% は直前の結果を指します。SMT ソルバーに渡す文字列は二重引用符 "…" で囲みます。',
       },
       {
         h: '厳密な値と小数表示',

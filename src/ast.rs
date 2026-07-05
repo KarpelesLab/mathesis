@@ -38,6 +38,8 @@ pub enum Expr {
     Neg(Box<Expr>),
     Factorial(Box<Expr>),
     Bin(Op, Box<Expr>, Box<Expr>),
+    /// `name = value` — bind a session variable (Set).
+    Assign { name: String, value: Box<Expr> },
     /// A Wolfram-style function application `Head[arg, …]`.
     Call(String, Vec<Expr>),
     /// A list `{a, b, …}`.

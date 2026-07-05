@@ -5,6 +5,7 @@
 
 use core::cell::RefCell;
 use core::cmp::Ordering;
+use std::collections::HashMap;
 
 use puremp::{Complex, Float, Int, Matrix, Rational, RoundingMode, lll_reduce, lll_reduce_delta};
 
@@ -30,6 +31,29 @@ fn get_last() -> EResult<Value> {
 
 thread_local! {
     static ENV: RefCell<Vec<(String, Value)>> = const { RefCell::new(Vec::new()) };
+}
+
+thread_local! {
+    /// Session variables bound with `=` (persist across cells, like `%`).
+    static GLOBALS: RefCell<HashMap<String, Value>> = RefCell::new(HashMap::new());
+}
+
+/// Built-in names that may not be reassigned.
+const RESERVED: &[&str] = &["Pi", "E", "I", "True", "False", "EulerGamma", "Catalan"];
+
+fn global_get(name: &str) -> Option<Value> {
+    GLOBALS.with(|g| g.borrow().get(name).cloned())
+}
+
+/// Bind (or rebind) a session variable, returning the stored value. Variables
+/// live for the worker's lifetime (cleared on a page reload / fresh sheet, like
+/// `%`).
+fn assign(name: &str, value: Value) -> EResult<Value> {
+    if RESERVED.contains(&name) {
+        return err(format!("`{name}` is a built-in constant and cannot be reassigned"));
+    }
+    GLOBALS.with(|g| g.borrow_mut().insert(name.to_string(), value.clone()));
+    Ok(value)
 }
 
 fn lookup(name: &str) -> Option<Value> {
@@ -64,6 +88,10 @@ pub fn eval(e: &Expr) -> EResult<Value> {
         Expr::Decimal { int, frac } => decimal_literal(int, frac),
         Expr::Symbol(s) => symbol(s),
         Expr::Str(s) => Ok(Value::Text(s.clone())),
+        Expr::Assign { name, value } => {
+            let v = eval(value)?;
+            assign(name, v)
+        }
         Expr::Last => get_last(),
         Expr::Neg(x) => value::neg(&eval(x)?),
         Expr::Factorial(x) => factorial(&eval(x)?),
@@ -125,7 +153,9 @@ fn decimal_literal(int: &str, frac: &str) -> EResult<Value> {
 /// Named constants. Irrational constants evaluate to a real at working
 /// precision; `N[Pi, d]` then renders as many digits as requested.
 fn symbol(name: &str) -> EResult<Value> {
-    if let Some(v) = lookup(name) {
+    // Local (Plot) bindings shadow session variables, which shadow nothing but
+    // the built-in constants below.
+    if let Some(v) = lookup(name).or_else(|| global_get(name)) {
         return Ok(v);
     }
     match name {

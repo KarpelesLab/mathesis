@@ -68,6 +68,22 @@ impl Parser {
                 continue;
             }
 
+            // Assignment binds loosest of all and is right-associative, so
+            // `x = y = 1` is `x = (y = 1)`. The target must be a bare name.
+            if *self.peek() == Tok::Assign {
+                if min_bp > 1 {
+                    break;
+                }
+                let name = match lhs {
+                    Expr::Symbol(s) => s,
+                    _ => return Err("the left side of `=` must be a variable name".into()),
+                };
+                self.bump();
+                let value = self.expr(1)?;
+                lhs = Expr::Assign { name, value: Box::new(value) };
+                continue;
+            }
+
             let (op, lbp, rbp) = match self.peek() {
                 Tok::PipePipe => (Op::Or, 3, 4),
                 Tok::AmpAmp => (Op::And, 5, 6),
@@ -176,6 +192,7 @@ fn describe(t: &Tok) -> String {
         Tok::RBrace => "}".into(),
         Tok::Comma => ",".into(),
         Tok::Percent => "%".into(),
+        Tok::Assign => "=".into(),
         Tok::EqEq => "==".into(),
         Tok::BangEq => "!=".into(),
         Tok::Lt => "<".into(),

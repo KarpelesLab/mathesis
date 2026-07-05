@@ -502,7 +502,7 @@ fn translate(e: &Expr, vars: &mut BTreeSet<String>) -> EResult<String> {
         }
         Expr::Call(head, cargs) => translate_call(head, cargs, vars),
         Expr::List(_) => err("a nested list is not a valid constraint"),
-        Expr::Factorial(_) | Expr::Last | Expr::Str(_) => {
+        Expr::Factorial(_) | Expr::Last | Expr::Str(_) | Expr::Assign { .. } => {
             err("this expression is not supported inside an SMT constraint")
         }
     }

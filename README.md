@@ -73,7 +73,9 @@ There is no symbolic simplifier yet, so exact irrationals survive only as leaves
 
 Syntax supported: integer & exact-decimal literals, `+ - * / ^`, unary minus,
 postfix `!`, parentheses, `{lists}`, function calls `Head[args]`, and `%` for the
-previous result.
+previous result. **Session variables** bind with `=` — `x = RandomPrime[1000]`,
+then reuse `x` in later cells (`==` remains equality; built-in constants like
+`Pi` are protected). Variables live for the browser session and clear on reload.
 
 Builtins (all delegating to `puremp`):
 

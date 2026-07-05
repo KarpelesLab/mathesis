@@ -24,6 +24,8 @@ pub enum Tok {
     RBrace,
     Comma,
     Percent,
+    /// `=` — assignment (Set).
+    Assign,
     // Relational / logical.
     EqEq,
     BangEq,
@@ -122,10 +124,14 @@ pub fn lex(src: &str) -> Result<Vec<Tok>, String> {
                 }
             }
             b'=' => {
-                // Accept `==` and a lone `=` as equality (the language has no
-                // assignment, so `=` is unambiguous).
-                i += if i + 1 < b.len() && b[i + 1] == b'=' { 2 } else { 1 };
-                out.push(Tok::EqEq);
+                // `==` compares; a lone `=` assigns (Wolfram convention).
+                if i + 1 < b.len() && b[i + 1] == b'=' {
+                    out.push(Tok::EqEq);
+                    i += 2;
+                } else {
+                    out.push(Tok::Assign);
+                    i += 1;
+                }
             }
             b'<' => {
                 if i + 1 < b.len() && b[i + 1] == b'=' {

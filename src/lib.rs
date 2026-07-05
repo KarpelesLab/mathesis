@@ -439,6 +439,26 @@ mod tests {
     }
 
     #[test]
+    fn session_variables() {
+        // Assignment returns the value and persists to later evaluations.
+        assert!(out("myx = 42").contains("\"text\":\"42\""));
+        assert!(out("myx + 8").contains("\"text\":\"50\""));
+        // Reassignment.
+        out("myx = 100");
+        assert!(out("myx").contains("\"text\":\"100\""));
+        // Chained assignment is right-associative.
+        out("mya = myb = 7");
+        assert!(out("mya + myb").contains("\"text\":\"14\""));
+        // An expression on the right-hand side is evaluated.
+        out("myw = 3^2");
+        assert!(out("myw").contains("\"text\":\"9\""));
+        // `==` stays equality; `=` is assignment.
+        assert!(out("myx == 100").contains("\"text\":\"True\""));
+        // Built-in constants are protected.
+        assert!(out("Pi = 3").contains("\"ok\":false"));
+    }
+
+    #[test]
     fn random_numbers() {
         // Bounds hold across many draws (values are CSPRNG-sourced, so we can't
         // assert exact outputs — only their ranges/shapes).
