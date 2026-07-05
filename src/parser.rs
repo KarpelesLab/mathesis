@@ -19,6 +19,10 @@ use crate::lexer::{Tok, lex};
 pub fn parse(src: &str) -> Result<Expr, String> {
     let toks = lex(src)?;
     let mut p = Parser { toks, pos: 0 };
+    // Nothing but whitespace/comments — treat as a blank line.
+    if *p.peek() == Tok::Eof {
+        return Err("empty input".into());
+    }
     let e = p.expr(0)?;
     match p.peek() {
         Tok::Eof => Ok(e),

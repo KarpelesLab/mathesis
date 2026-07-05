@@ -439,6 +439,19 @@ mod tests {
     }
 
     #[test]
+    fn comments() {
+        // `(* … *)` comments are skipped anywhere whitespace is allowed.
+        assert!(out("1 + 2 (* inline *) + 3").contains("\"text\":\"6\""));
+        assert!(out("(* leading *) 40 + 2").contains("\"text\":\"42\""));
+        assert!(out("40 + 2 (* trailing *)").contains("\"text\":\"42\""));
+        // Comments nest.
+        assert!(out("(* a (* b *) c *) 5 * 5").contains("\"text\":\"25\""));
+        // Unterminated is a clear error; a comment-only line is blank.
+        assert!(out("1 + (* oops").contains("unterminated comment"));
+        assert!(out("(* just a note *)").contains("empty input"));
+    }
+
+    #[test]
     fn session_variables() {
         // Assignment returns the value and persists to later evaluations.
         assert!(out("myx = 42").contains("\"text\":\"42\""));

@@ -75,7 +75,8 @@ Syntax supported: integer & exact-decimal literals, `+ - * / ^`, unary minus,
 postfix `!`, parentheses, `{lists}`, function calls `Head[args]`, and `%` for the
 previous result. **Session variables** bind with `=` — `x = RandomPrime[1000]`,
 then reuse `x` in later cells (`==` remains equality; built-in constants like
-`Pi` are protected). Variables live for the browser session and clear on reload.
+`Pi` are protected). Variables live for the browser session and clear on reload. Wolfram-style
+`(* … *)` comments (nestable) are allowed anywhere whitespace is.
 
 Builtins (all delegating to `puremp`):
 

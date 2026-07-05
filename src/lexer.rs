@@ -167,6 +167,25 @@ pub fn lex(src: &str) -> Result<Vec<Tok>, String> {
                     return Err("unexpected `|` (did you mean `||`?)".to_string());
                 }
             }
+            // A `(* … *)` comment (Wolfram-style, nestable) — skipped entirely.
+            b'(' if i + 1 < b.len() && b[i + 1] == b'*' => {
+                i += 2;
+                let mut depth = 1;
+                while i < b.len() && depth > 0 {
+                    if b[i] == b'(' && i + 1 < b.len() && b[i + 1] == b'*' {
+                        depth += 1;
+                        i += 2;
+                    } else if b[i] == b'*' && i + 1 < b.len() && b[i + 1] == b')' {
+                        depth -= 1;
+                        i += 2;
+                    } else {
+                        i += 1;
+                    }
+                }
+                if depth != 0 {
+                    return Err("unterminated comment (expected `*)`)".to_string());
+                }
+            }
             b'(' => push(&mut out, &mut i, Tok::LParen),
             b')' => push(&mut out, &mut i, Tok::RParen),
             b'[' => push(&mut out, &mut i, Tok::LBrack),
