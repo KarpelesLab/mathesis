@@ -110,7 +110,9 @@ Builtins (all delegating to `puremp`):
   variable bound; out-of-domain points become gaps.
 - **Solving / theorem proving** (via [`z3rs`](https://github.com/KarpelesLab/z3rs),
   a pure-Rust Z3 port) —
-  - `SatisfiableQ[c]` → `True`/`False`. `FindInstance[c, vars]` finds one
+  - `SatisfiableQ[c]` → `True`/`False` (is `c` satisfiable?); `TautologyQ[f]` →
+    is `f` valid, i.e. true for every assignment (`TautologyQ[Implies[p && Implies[p, q], q]]`
+    → `True`, `TautologyQ[x + 1 > x, Reals]` → `True`). `FindInstance[c, vars]` finds one
     satisfying assignment; `Solve[c, vars]` returns **all** solutions over the
     integers (sorted, capped), or one over the reals — each as **exact, typeset
     rules** (`{x → 6, y → 4}`, `{}` if none, reals as fractions like `x → 3/2`).

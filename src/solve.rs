@@ -23,6 +23,17 @@ pub fn solve_form(head: &str, args: &[Expr]) -> EResult<Value> {
             }
             satisfiable(&args[0])
         }
+        "TautologyQ" => {
+            if !(1..=2).contains(&args.len()) {
+                return err("TautologyQ expects a formula and an optional domain");
+            }
+            let domain = if args.len() == 2 {
+                domain_of(&args[1])?
+            } else {
+                Domain::Integers
+            };
+            tautology(&args[0], domain)
+        }
         "FindInstance" | "Solve" => {
             if !(2..=3).contains(&args.len()) {
                 return err(format!(
@@ -114,6 +125,23 @@ fn satisfiable(e: &Expr) -> EResult<Value> {
         Some("unsat") => Ok(Value::Bool(false)),
         _ => err(
             "SatisfiableQ: the solver returned `unknown` (the constraint may be nonlinear or use an unsupported theory) — try SMT[..] directly",
+        ),
+    }
+}
+
+/// `TautologyQ[φ]` — is `φ` valid (true for every assignment)? It is iff its
+/// negation is unsatisfiable.
+fn tautology(e: &Expr, domain: Domain) -> EResult<Value> {
+    let mut vars = BTreeSet::new();
+    let term = translate_top(e, &mut vars)?;
+    let sorts = sorts_of(e);
+    let neg = format!("(not {term})");
+    let lines = run(&build_script(&vars, &sorts, &neg, domain, None))?;
+    match lines.first().map(String::as_str) {
+        Some("unsat") => Ok(Value::Bool(true)), // no counterexample → valid
+        Some("sat") => Ok(Value::Bool(false)),  // a counterexample exists
+        _ => err(
+            "TautologyQ: the solver returned `unknown` (the formula may be nonlinear or use an unsupported theory)",
         ),
     }
 }

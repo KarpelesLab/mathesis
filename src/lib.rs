@@ -398,6 +398,17 @@ mod tests {
     }
 
     #[test]
+    fn tautology() {
+        // Propositional validity, incl. modus ponens.
+        assert!(out("TautologyQ[Implies[p, p || q]]").contains("\"text\":\"True\""));
+        assert!(out("TautologyQ[Implies[p && Implies[p, q], q]]").contains("\"text\":\"True\""));
+        assert!(out("TautologyQ[p || q]").contains("\"text\":\"False\""));
+        // Arithmetic validity over the reals.
+        assert!(out("TautologyQ[x + 1 > x, Reals]").contains("\"text\":\"True\""));
+        assert!(out("TautologyQ[x > 0, Reals]").contains("\"text\":\"False\""));
+    }
+
+    #[test]
     fn boolean_logic() {
         // Propositional variables are inferred as Bool.
         assert!(out("SatisfiableQ[p || q]").contains("\"text\":\"True\""));

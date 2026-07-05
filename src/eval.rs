@@ -91,7 +91,7 @@ pub fn eval(e: &Expr) -> EResult<Value> {
         Expr::Call(head, args)
             if matches!(
                 head.as_str(),
-                "SatisfiableQ" | "FindInstance" | "Solve" | "Maximize" | "Minimize"
+                "SatisfiableQ" | "TautologyQ" | "FindInstance" | "Solve" | "Maximize" | "Minimize"
             ) =>
         {
             crate::solve::solve_form(head, args)
