@@ -11,7 +11,7 @@
 //!   any operation mixing an exact value with a real produces a real, exactly as
 //!   a hand calculation drops to decimals once an irrational enters.
 
-use puremp::{Complex, Float, Int, Rational, RoundingMode};
+use puremp::{Algebraic, Complex, Float, Int, Quadratic, Rational, RoundingMode};
 
 use crate::error::{EResult, EvalError, err};
 
@@ -37,6 +37,11 @@ pub enum Value {
     /// `Pi` → π, `Sqrt[2]` → √2 — carrying its numeric value for the decimal
     /// approximation and for when arithmetic must drop to the real path.
     Sym { text: String, tex: String, val: Float },
+    /// An exact **real algebraic number** — a root of a rational polynomial,
+    /// carrying its defining polynomial and an isolating interval (from `Solve`
+    /// of a polynomial, `Eigenvalues`, …). Rendered as a radical when degree ≤ 2,
+    /// otherwise as a decimal. Rationals collapse to `Int`/`Ratio` (see [`alg`]).
+    Alg(Algebraic),
     /// An exact complex number with rational parts (a Gaussian rational). The
     /// imaginary part is guaranteed nonzero — a purely real value collapses back
     /// to `Int`/`Ratio` (see [`from_complex`]).
@@ -82,6 +87,105 @@ pub fn from_rational(r: Rational) -> Value {
         Some(n) => Value::Int(n),
         None => Value::Ratio(r),
     }
+}
+
+/// Wrap an exact real algebraic number, collapsing a rational one back to
+/// `Int`/`Ratio` so ordinary results stay in their simplest form.
+pub fn alg(a: Algebraic) -> Value {
+    if a.is_rational() {
+        let c = a.defining_polynomial().coeffs();
+        // A rational root has defining polynomial `c1·x + c0` → `x = −c0/c1`.
+        if c.len() == 2 {
+            return from_rational(c[0].neg().div(&c[1]));
+        }
+        return Value::Int(Int::from(0));
+    }
+    Value::Alg(a)
+}
+
+fn is_alg(v: &Value) -> bool {
+    matches!(v, Value::Alg(_))
+}
+
+/// Lift an exact real value to an algebraic number (for mixed arithmetic).
+fn as_alg(v: &Value) -> EResult<Algebraic> {
+    match v {
+        Value::Int(n) => Ok(Algebraic::from_int(n.clone())),
+        Value::Ratio(r) => Ok(Algebraic::from_rational(r.clone())),
+        Value::Alg(a) => Ok(a.clone()),
+        _ => err("expected an algebraic number"),
+    }
+}
+
+/// An algebraic base raised to an integer power, by repeated multiplication.
+fn alg_pow(a: &Algebraic, e: i64) -> EResult<Value> {
+    if e == 0 {
+        return Ok(Value::Int(Int::from(1)));
+    }
+    let n = e.unsigned_abs();
+    if n > 4096 {
+        return err("exponent too large for an algebraic base");
+    }
+    let mut acc = Algebraic::from_int(Int::from(1));
+    for _ in 0..n {
+        acc = acc.mul(a);
+    }
+    if e < 0 {
+        if acc.signum() == 0 {
+            return err("division by zero (0 raised to a negative power)");
+        }
+        acc = acc.recip();
+    }
+    Ok(alg(acc))
+}
+
+/// If `a` has degree ≤ 2, express it as the exact radical `p + q·√d`.
+fn alg_quadratic(a: &Algebraic) -> Option<Quadratic> {
+    let c = a.defining_polynomial().coeffs();
+    if c.len() != 3 {
+        return None; // not a quadratic irrational
+    }
+    let (c0, c1, c2) = (&c[0], &c[1], &c[2]); // c2·x² + c1·x + c0
+    let disc = c1.mul(c1).sub(&rat(4).mul(c2).mul(c0)); // b² − 4ac
+    if !disc.is_positive() {
+        return None;
+    }
+    let two_c2 = rat(2).mul(c2);
+    let p = c1.neg().div(&two_c2); // rational part −b/2a
+    // √disc = √(dn·dd) / dd, so root = p ± √(dn·dd) / (dd·2a).
+    let dn = disc.numerator().clone();
+    let dd = disc.denominator().clone();
+    let radicand = dn.mul(&dd);
+    let denom = Rational::from_integer(dd).mul(&two_c2);
+    let mut coeff = rat(1).div(&denom).abs();
+    // Pick the ± branch by comparing this root's interval midpoint to p.
+    let (lo, hi) = a.interval();
+    let mid = lo.add(hi).div(&rat(2));
+    if !mid.sub(&p).is_positive() {
+        coeff = coeff.neg();
+    }
+    Some(Quadratic::new(p, coeff, radicand))
+}
+
+/// Render one surd term `coeff·√d` (or the whole `p + coeff·√d`), in text or TeX.
+fn quad_render(q: &Quadratic, tex: bool) -> String {
+    let a = q.rational_part();
+    let b = q.surd_coefficient();
+    let d = q.radicand();
+    let surd = if tex { format!("\\sqrt{{{d}}}") } else { format!("√{d}") };
+    let mag = b.abs();
+    let term = if mag.is_one() {
+        surd
+    } else {
+        let m = if tex { from_rational(mag).to_tex() } else { from_rational(mag).to_text() };
+        format!("{m} {surd}")
+    };
+    if a.is_zero() {
+        return if b.is_negative() { format!("-{term}") } else { term };
+    }
+    let ap = if tex { from_rational(a.clone()).to_tex() } else { from_rational(a.clone()).to_text() };
+    let sign = if b.is_negative() { "-" } else { "+" };
+    format!("{ap} {sign} {term}")
 }
 
 /// Collapse a complex number to a real one when its imaginary part vanishes.
@@ -288,6 +392,7 @@ pub fn to_float(v: &Value) -> EResult<Float> {
         Value::Ratio(r) => Ok(Float::from_rational(r, WORK_BITS, NEAR)),
         Value::Real(f) => Ok(f.clone()),
         Value::Sym { val, .. } => Ok(val.clone()),
+        Value::Alg(a) => Ok(a.to_float(WORK_BITS, NEAR)),
         _ => err("expected a number"),
     }
 }
@@ -301,7 +406,7 @@ fn is_inexact(v: &Value) -> bool {
 /// A real value as an `f64` for plotting; `None` for non-real (complex) values.
 pub fn to_f64(v: &Value) -> Option<f64> {
     match v {
-        Value::Int(_) | Value::Ratio(_) | Value::Real(_) | Value::Sym { .. } => {
+        Value::Int(_) | Value::Ratio(_) | Value::Real(_) | Value::Sym { .. } | Value::Alg(_) => {
             to_float(v).ok().map(|f| f.to_f64())
         }
         _ => None,
@@ -333,6 +438,8 @@ pub fn add(a: &Value, b: &Value) -> EResult<Value> {
         }
     } else if is_inexact(a) || is_inexact(b) {
         real(to_float(a)?.add(&to_float(b)?, WORK_BITS, NEAR))
+    } else if is_alg(a) || is_alg(b) {
+        Ok(alg(as_alg(a)?.add(&as_alg(b)?)))
     } else {
         Ok(from_rational(to_rational(a)?.add(&to_rational(b)?)))
     }
@@ -347,6 +454,8 @@ pub fn sub(a: &Value, b: &Value) -> EResult<Value> {
         }
     } else if is_inexact(a) || is_inexact(b) {
         real(to_float(a)?.sub(&to_float(b)?, WORK_BITS, NEAR))
+    } else if is_alg(a) || is_alg(b) {
+        Ok(alg(as_alg(a)?.sub(&as_alg(b)?)))
     } else {
         Ok(from_rational(to_rational(a)?.sub(&to_rational(b)?)))
     }
@@ -361,6 +470,8 @@ pub fn mul(a: &Value, b: &Value) -> EResult<Value> {
         }
     } else if is_inexact(a) || is_inexact(b) {
         real(to_float(a)?.mul(&to_float(b)?, WORK_BITS, NEAR))
+    } else if is_alg(a) || is_alg(b) {
+        Ok(alg(as_alg(a)?.mul(&as_alg(b)?)))
     } else {
         Ok(from_rational(to_rational(a)?.mul(&to_rational(b)?)))
     }
@@ -387,6 +498,12 @@ pub fn div(a: &Value, b: &Value) -> EResult<Value> {
             return err("division by zero");
         }
         real(to_float(a)?.div(&fb, WORK_BITS, NEAR))
+    } else if is_alg(a) || is_alg(b) {
+        let bb = as_alg(b)?;
+        if bb.signum() == 0 {
+            return err("division by zero");
+        }
+        Ok(alg(as_alg(a)?.div(&bb)))
     } else {
         let rb = to_rational(b)?;
         if rb.is_zero() {
@@ -402,12 +519,16 @@ pub fn neg(a: &Value) -> EResult<Value> {
         Value::CplxReal(c) => {
             from_complex_float(Complex::new(c.re.neg(), c.im.neg()))
         }
+        Value::Alg(x) => Ok(alg(x.neg())),
         _ if is_inexact(a) => Ok(Value::Real(to_float(a)?.neg())),
         _ => Ok(from_rational(to_rational(a)?.neg())),
     }
 }
 
 pub fn abs(v: &Value) -> EResult<Value> {
+    if let Value::Alg(a) = v {
+        return Ok(alg(if a.signum() < 0 { a.neg() } else { a.clone() }));
+    }
     if is_inexact(v) {
         Ok(Value::Real(to_float(v)?.abs()))
     } else {
@@ -443,6 +564,9 @@ pub fn pow(base: &Value, exp: &Value) -> EResult<Value> {
                     return Ok(Value::Int(b.pow(e)));
                 }
             }
+            if let Value::Alg(a) = base {
+                return alg_pow(a, e);
+            }
             let rb = to_rational(base)?;
             if rb.is_zero() && e < 0 {
                 return err("division by zero (0 raised to a negative power)");
@@ -472,6 +596,10 @@ impl Value {
             Value::Ratio(r) => format!("{}/{}", r.numerator(), r.denominator()),
             Value::Real(f) => real_string(f),
             Value::Sym { text, .. } => text.clone(),
+            Value::Alg(a) => match alg_quadratic(a) {
+                Some(q) => quad_render(&q, false),
+                None => real_string(&a.to_float(WORK_BITS, NEAR)),
+            },
             Value::Cplx(c) => complex_render(c, false),
             Value::CplxReal(c) => complex_render_float(c, false),
             Value::Graphics(_) => "«graphics»".to_string(),
@@ -531,6 +659,10 @@ impl Value {
             }
             Value::Real(f) => real_string(f),
             Value::Sym { tex, .. } => tex.clone(),
+            Value::Alg(a) => match alg_quadratic(a) {
+                Some(q) => quad_render(&q, true),
+                None => real_string(&a.to_float(WORK_BITS, NEAR)),
+            },
             Value::Cplx(c) => complex_render(c, true),
             Value::CplxReal(c) => complex_render_float(c, true),
             Value::Graphics(_) => "«graphics»".to_string(),
@@ -645,6 +777,9 @@ impl Value {
         match self {
             Value::Ratio(r) => Some(real_string(&Float::from_rational(r, WORK_BITS, NEAR))),
             Value::Sym { val, .. } => Some(real_string(val)),
+            // A radical (degree ≤ 2) shows its decimal; a degree ≥ 3 root already
+            // renders as a decimal, so it needs no second copy.
+            Value::Alg(a) if alg_quadratic(a).is_some() => Some(real_string(&a.to_float(WORK_BITS, NEAR))),
             _ => None,
         }
     }

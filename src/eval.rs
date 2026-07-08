@@ -519,6 +519,33 @@ fn call(head: &str, args: &[Value]) -> EResult<Value> {
             arity(head, args, 1)?;
             Ok(Value::Int(Int::from(rat_matrix(&args[0])?.rank() as i64)))
         }
+        "Eigenvalues" => {
+            arity(head, args, 1)?;
+            let m = rat_matrix(&args[0])?;
+            if !m.is_square() {
+                return err("Eigenvalues: the matrix must be square");
+            }
+            // Exact real eigenvalues, expanded by multiplicity. Non-real
+            // (complex-conjugate) eigenvalues are omitted — the engine returns
+            // only the real spectrum.
+            let mut vals: Vec<Value> = Vec::new();
+            for (ev, mult) in m.real_eigenvalues_with_multiplicity() {
+                let v = value::alg(ev);
+                for _ in 0..mult {
+                    vals.push(v.clone());
+                }
+            }
+            // Largest magnitude first (Mathematica's ordering).
+            vals.sort_by(|x, y| {
+                let fx = value::to_f64(x).unwrap_or(0.0);
+                let fy = value::to_f64(y).unwrap_or(0.0);
+                fy.abs()
+                    .partial_cmp(&fx.abs())
+                    .unwrap_or(Ordering::Equal)
+                    .then(fy.partial_cmp(&fx).unwrap_or(Ordering::Equal))
+            });
+            Ok(Value::List(vals))
+        }
         "Dot" => {
             arity(head, args, 2)?;
             let a = rat_matrix(&args[0])?;

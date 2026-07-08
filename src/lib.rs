@@ -473,6 +473,20 @@ mod tests {
     }
 
     #[test]
+    fn eigenvalues() {
+        // Rational spectrum, largest magnitude first.
+        assert!(out("Eigenvalues[{{2, 1}, {1, 2}}]").contains("{3, 1}"));
+        assert!(out("Eigenvalues[{{1, 2, 0}, {2, 1, 0}, {0, 0, 4}}]").contains("{4, 3, -1}"));
+        // Irrational eigenvalues render as exact radicals.
+        let s = out("Eigenvalues[{{0, 1}, {2, 0}}]");
+        assert!(s.contains("\\\\sqrt{2}") && s.contains("-\\\\sqrt{2}"), "{s}");
+        // Complex eigenvalues are omitted (only the real spectrum).
+        assert!(out("Eigenvalues[{{0, -1}, {1, 0}}]").contains("\"text\":\"{}\""));
+        // A non-square matrix errors.
+        assert!(out("Eigenvalues[{{1, 2, 3}, {4, 5, 6}}]").contains("\"ok\":false"));
+    }
+
+    #[test]
     fn elliptic_curves() {
         // y² = x³ + 2x + 2 over GF(17); (5,1) generates the whole group (order 19).
         assert!(out("ECPointQ[2, 2, 17, {5, 1}]").contains("\"text\":\"True\""));

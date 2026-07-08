@@ -143,6 +143,7 @@ export const CATEGORIES: Category[] = [
       { name: 'Transpose', syntax: 'Transpose[m]', examples: ['Transpose[{{1, 2}, {3, 4}}]'], desc: t('Matrix transpose.', "Transposée d'une matrice.", '転置行列。') },
       { name: 'Dot', syntax: 'Dot[a, b]', examples: ['Dot[{{1, 2}, {3, 4}}, {{0, 1}, {1, 0}}]'], desc: t('Matrix product.', 'Produit matriciel.', '行列の積。') },
       { name: 'MatrixRank', syntax: 'MatrixRank[m]', examples: ['MatrixRank[{{1, 2}, {2, 4}}]'], desc: t('Rank of a matrix.', "Rang d'une matrice.", '行列の階数（ランク）。') },
+      { name: 'Eigenvalues', syntax: 'Eigenvalues[m]', examples: ['Eigenvalues[{{2, 1}, {1, 2}}]', 'Eigenvalues[{{0, 1}, {2, 0}}]'], desc: t('Exact real eigenvalues of a rational square matrix (as radicals where possible); complex eigenvalues are omitted.', 'Valeurs propres réelles exactes (en radicaux si possible) ; les complexes sont omises.', '有理正方行列の厳密な実固有値（可能なら根号で）。複素固有値は省略。') },
       { name: 'LinearSolve', syntax: 'LinearSolve[m, b]', examples: ['LinearSolve[{{1, 1}, {1, -1}}, {3, 1}]'], desc: t('Solve the linear system m·x = b.', 'Résout le système linéaire m·x = b.', '連立一次方程式 m·x = b を解く。') },
       { name: 'IdentityMatrix', syntax: 'IdentityMatrix[n]', examples: ['IdentityMatrix[3]'], desc: t('The n×n identity matrix.', 'La matrice identité n×n.', 'n×n の単位行列。') },
       { name: 'LatticeReduce', syntax: 'LatticeReduce[{{…}, …}]', examples: ['LatticeReduce[{{1, 1, 1}, {-1, 0, 2}, {3, 5, 6}}]'], desc: t('LLL-reduced basis of an integer lattice.', "Base réduite (LLL) d'un réseau entier.", '整数格子の LLL 簡約基底。') },

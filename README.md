@@ -116,7 +116,10 @@ Builtins (all delegating to `puremp`):
   → `3.14159… I`, `Sqrt[-2]` → `1.41421… I`, `Exp[I*Pi]` ≈ `-1`. `Sqrt`, `Exp`,
   `Log`, `Sin`, and `Cos` accept complex arguments.
 - **Linear algebra** (exact, over rationals) — `Det`, `Inverse`, `Transpose`,
-  `Dot`, `MatrixRank`, `LinearSolve`, `IdentityMatrix`; `LatticeReduce` (LLL
+  `Dot`, `MatrixRank`, `LinearSolve`, `IdentityMatrix`, `Eigenvalues` (exact real
+  spectrum as **algebraic numbers** — radicals where possible, e.g.
+  `Eigenvalues[{{0,1},{2,0}}]` → `{√2, -√2}`; complex eigenvalues are omitted);
+  `LatticeReduce` (LLL
   reduction of an integer basis, optional second argument δ ∈ (1/4, 1]).
   Rectangular list-of-lists render as bracketed matrices.
 - **Plotting** — `Plot[expr, {x, a, b}]` draws a 2D curve (a list of expressions
