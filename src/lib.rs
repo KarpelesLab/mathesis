@@ -473,6 +473,25 @@ mod tests {
     }
 
     #[test]
+    fn solve_polynomial() {
+        // Exact irrational roots as radicals.
+        let s = out("Solve[x^2 == 2, x]");
+        assert!(s.contains("{x -> -√2}") && s.contains("{x -> √2}"), "{s}");
+        // A quadratic with rational + surd parts (golden ratio & conjugate).
+        assert!(out("Solve[x^2 - x - 1 == 0, x]").contains("√5"));
+        // Integer roots collapse to integers, sorted.
+        assert!(out("Solve[x^2 == 4, x]").contains("{{x -> -2}, {x -> 2}}"));
+        // A factored cubic.
+        assert!(out("Solve[(x-1)*(x-2)*(x-3) == 0, x]").contains("{{x -> 1}, {x -> 2}, {x -> 3}}"));
+        // No real roots → {}.
+        assert!(out("Solve[x^2 + 1 == 0, x]").contains("\"text\":\"{}\""));
+        // An explicit Integers domain keeps only integer roots.
+        assert!(out("Solve[x^2 == 2, x, Integers]").contains("\"text\":\"{}\""));
+        // Non-polynomial / multivariate constraints still use the SMT path.
+        assert!(out("Solve[x > 0 && x < 5, x]").contains("{{x -> 1}, {x -> 2}, {x -> 3}, {x -> 4}}"));
+    }
+
+    #[test]
     fn eigenvalues() {
         // Rational spectrum, largest magnitude first.
         assert!(out("Eigenvalues[{{2, 1}, {1, 2}}]").contains("{3, 1}"));

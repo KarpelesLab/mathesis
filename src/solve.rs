@@ -9,7 +9,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use puremp::Int;
+use puremp::{Algebraic, Int, Poly, Rational};
 
 use crate::ast::{Expr, Op};
 use crate::error::{EResult, EvalError, err};
@@ -41,13 +41,13 @@ pub fn solve_form(head: &str, args: &[Expr]) -> EResult<Value> {
                 ));
             }
             let wanted = var_list(&args[1])?;
-            let domain = if args.len() == 3 {
-                domain_of(&args[2])?
+            let (domain, explicit) = if args.len() == 3 {
+                (domain_of(&args[2])?, true)
             } else {
-                Domain::Integers
+                (Domain::Integers, false)
             };
             if head == "Solve" {
-                solve_all(&args[0], &wanted, domain)
+                solve_all(&args[0], &wanted, domain, explicit)
             } else {
                 find_instance(&args[0], &wanted, domain)
             }
@@ -173,7 +173,107 @@ fn find_instance(e: &Expr, wanted: &[String], domain: Domain) -> EResult<Value> 
 /// dense, so there `Solve` falls back to a single instance.
 const MAX_SOLUTIONS: usize = 256;
 
-fn solve_all(e: &Expr, wanted: &[String], domain: Domain) -> EResult<Value> {
+/// The value of a constant non-negative integer exponent (for polynomial powers).
+fn const_nonneg_int(e: &Expr) -> Option<u32> {
+    if let Expr::Int(s) = e {
+        let n = Int::from_str_radix(s, 10).ok()?;
+        let v = value::to_i64(&n).ok()?;
+        if (0..=1024).contains(&v) {
+            return Some(v as u32);
+        }
+    }
+    None
+}
+
+fn poly_pow(base: &Poly<Rational>, n: u32) -> Poly<Rational> {
+    let mut acc = Poly::new(vec![Rational::ONE]);
+    for _ in 0..n {
+        acc = acc.mul(base);
+    }
+    acc
+}
+
+/// Try to read an expression as a univariate polynomial in `x` over ℚ. Returns
+/// `None` for anything non-polynomial (another variable, `x` in a denominator,
+/// `Sin[x]`, a fractional/variable exponent, …).
+fn expr_to_poly(e: &Expr, x: &str) -> Option<Poly<Rational>> {
+    let konst = |r: Rational| Poly::new(vec![r]);
+    match e {
+        Expr::Int(s) => Some(konst(Rational::from_integer(Int::from_str_radix(s, 10).ok()?))),
+        Expr::Decimal { int, frac } => {
+            let num = Int::from_str_radix(&format!("{int}{frac}"), 10).ok()?;
+            let den = Int::from(10).pow(frac.len() as u32);
+            Some(konst(Rational::new(num, den)))
+        }
+        Expr::Symbol(s) if s == x => Some(Poly::new(vec![Rational::ZERO, Rational::ONE])),
+        Expr::Symbol(_) => None,
+        Expr::Neg(a) => Some(expr_to_poly(a, x)?.scalar_mul(&Rational::from_integer(Int::from(-1)))),
+        Expr::Bin(op, a, b) => match op {
+            Op::Add => Some(expr_to_poly(a, x)?.add(&expr_to_poly(b, x)?)),
+            Op::Sub => Some(expr_to_poly(a, x)?.sub(&expr_to_poly(b, x)?)),
+            Op::Mul => Some(expr_to_poly(a, x)?.mul(&expr_to_poly(b, x)?)),
+            Op::Div => {
+                let bp = expr_to_poly(b, x)?;
+                if bp.degree() != Some(0) {
+                    return None; // dividing by a polynomial in x isn't polynomial
+                }
+                let c = &bp.coeffs()[0];
+                if c.is_zero() {
+                    return None;
+                }
+                Some(expr_to_poly(a, x)?.scalar_mul(&Rational::ONE.div(c)))
+            }
+            Op::Pow => Some(poly_pow(&expr_to_poly(a, x)?, const_nonneg_int(b)?)),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+/// A single univariate polynomial equation → its exact real algebraic roots. An
+/// explicit `Integers` domain keeps only the integer roots. Returns `None` when
+/// the constraint isn't such an equation (so the caller falls back to SMT).
+fn try_poly_solve(
+    e: &Expr,
+    wanted: &[String],
+    domain: Domain,
+    explicit: bool,
+) -> Option<EResult<Value>> {
+    if wanted.len() != 1 {
+        return None;
+    }
+    let x = &wanted[0];
+    let (lhs, rhs) = match e {
+        Expr::Bin(Op::Eq, a, b) => (a.as_ref(), b.as_ref()),
+        _ => return None,
+    };
+    let poly = expr_to_poly(lhs, x)?.sub(&expr_to_poly(rhs, x)?);
+    match poly.degree() {
+        None => return Some(err("Solve: the equation holds for every value")),
+        Some(0) => return Some(Ok(Value::Solutions { rows: Vec::new(), truncated: false })),
+        _ => {}
+    }
+    let mut sols: Vec<(f64, Vec<(String, Value)>)> = Algebraic::real_roots_of(&poly)
+        .into_iter()
+        .map(|r| {
+            let v = value::alg(r);
+            (value::to_f64(&v).unwrap_or(0.0), vec![(x.clone(), v)])
+        })
+        .collect();
+    if explicit && matches!(domain, Domain::Integers) {
+        sols.retain(|(_, rules)| matches!(&rules[0].1, Value::Int(_)));
+    }
+    sols.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(core::cmp::Ordering::Equal));
+    let rows = sols.into_iter().map(|(_, r)| r).collect();
+    Some(Ok(Value::Solutions { rows, truncated: false }))
+}
+
+fn solve_all(e: &Expr, wanted: &[String], domain: Domain, explicit: bool) -> EResult<Value> {
+    // A univariate polynomial equation is solved exactly (algebraic roots),
+    // not by SMT integer enumeration.
+    if let Some(res) = try_poly_solve(e, wanted, domain, explicit) {
+        return res;
+    }
     if matches!(domain, Domain::Reals) {
         let rows = match find_instance(e, wanted, domain)? {
             Value::Rules(r) if r.is_empty() => Vec::new(),

@@ -132,7 +132,11 @@ Builtins (all delegating to `puremp`):
     is `f` valid, i.e. true for every assignment (`TautologyQ[Implies[p && Implies[p, q], q]]`
     → `True`, `TautologyQ[x + 1 > x, Reals]` → `True`). `FindInstance[c, vars]` finds one
     satisfying assignment; `Solve[c, vars]` returns **all** solutions over the
-    integers (sorted, capped), or one over the reals. A multi-solution `Solve`
+    integers (sorted, capped), or one over the reals. A **univariate polynomial
+    equation** is solved exactly instead — `Solve[x^2 == 2, x]` →
+    `{-√2, √2}`, `Solve[x^2 - x - 1 == 0, x]` → `{½ - ½√5, ½ + ½√5}` (roots are
+    exact algebraic numbers, radicals where possible; higher degree as decimals).
+    A multi-solution `Solve`
     renders as a **table** (variables × solutions, with a count); a single
     `FindInstance` as exact, typeset rules (`{x → 6, y → 4}`, reals as fractions
     like `x → 3/2`). An optional third argument picks the domain: `Integers`
