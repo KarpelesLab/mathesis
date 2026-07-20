@@ -11,6 +11,9 @@ export interface EvalResult {
   tex?: string
   /** Decimal approximation to show alongside an exact result (π, √2, a fraction). */
   approx?: string
+  /** Identifier of a remark about this particular computation (e.g. a famous
+   *  example the engine recognises); localized text lives in i18n under `notes`. */
+  note?: string
   /** When set, `text` is opaque output (string / SMT) — render as monospace, not math. */
   plain?: boolean
   /** A Plot/Plot3D payload to draw (present for graphics results). */

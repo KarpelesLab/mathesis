@@ -36,6 +36,10 @@ const messages = {
     },
     composer: { placeholder: 'Type an expression…', stop: 'stop', slow: 'This is taking some time — click stop to cancel' },
     sol: { count: 'no solutions | {n} solution | {n} solutions', truncated: 'first {n} shown' },
+    notes: {
+      'jacobian-conjecture':
+        "You just verified half of a disproof: this is the map from Levent Alpöge's 2026 counterexample to the Jacobian conjecture (open since 1939). Its Jacobian determinant is exactly the constant −2 — yet the map is not injective: F(1, 0, 2) = F(0, 6, −142) = (2, 6, 0). A constant nonzero Jacobian determinant therefore does not imply invertibility.",
+    },
     builder: {
       open: 'Solve builder',
       title: 'Solve builder',
@@ -96,6 +100,10 @@ const messages = {
     },
     composer: { placeholder: 'Saisissez une expression…', stop: 'arrêter', slow: 'Cela prend du temps — cliquez sur arrêter pour annuler' },
     sol: { count: 'aucune solution | {n} solution | {n} solutions', truncated: '{n} premières affichées' },
+    notes: {
+      'jacobian-conjecture':
+        "Vous venez de vérifier la moitié d'une réfutation : c'est l'application du contre-exemple de Levent Alpöge (2026) à la conjecture jacobienne (ouverte depuis 1939). Son déterminant jacobien vaut exactement la constante −2 — pourtant l'application n'est pas injective : F(1, 0, 2) = F(0, 6, −142) = (2, 6, 0). Un déterminant jacobien constant non nul n'implique donc pas l'inversibilité.",
+    },
     builder: {
       open: 'Assistant Solve',
       title: 'Assistant Solve',
@@ -155,6 +163,10 @@ const messages = {
     },
     composer: { placeholder: '式を入力…', stop: '停止', slow: '時間がかかっています — 停止で中止できます' },
     sol: { count: '解なし | {n} 個の解 | {n} 個の解', truncated: '先頭 {n} 件を表示' },
+    notes: {
+      'jacobian-conjecture':
+        'いま反証の半分を検証しました。これは Levent Alpöge による 2026 年のヤコビアン予想（1939 年以来の未解決問題）への反例の写像です。ヤコビ行列式は厳密に定数 −2 ですが、写像は単射ではありません：F(1, 0, 2) = F(0, 6, −142) = (2, 6, 0)。つまり、ヤコビ行列式が 0 でない定数でも可逆とは限りません。',
+    },
     builder: {
       open: 'Solve ビルダー',
       title: 'Solve ビルダー',

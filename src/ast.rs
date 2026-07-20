@@ -21,7 +21,7 @@ pub enum Op {
     Or,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Expr {
     /// An arbitrary-length integer literal, kept as its source digits until
     /// evaluation hands them to `puremp`.

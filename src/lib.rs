@@ -64,11 +64,16 @@ pub fn evaluate(input: &str) -> String {
                     Some(a) => format!(",\"approx\":{}", json_string(&a)),
                     None => String::new(),
                 };
+                let note = match note_for(input) {
+                    Some(id) => format!(",\"note\":{}", json_string(id)),
+                    None => String::new(),
+                };
                 format!(
-                    "{{\"ok\":true,\"text\":{},\"tex\":{}{}}}",
+                    "{{\"ok\":true,\"text\":{},\"tex\":{}{}{}}}",
                     json_string(&v.to_text()),
                     json_string(&v.to_tex()),
                     approx,
+                    note,
                 )
             }
         }
@@ -80,6 +85,21 @@ pub fn evaluate(input: &str) -> String {
 #[wasm_bindgen]
 pub fn version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
+}
+
+/// The map from Alpöge's 2026 counterexample to the Jacobian conjecture. When a
+/// cell computes exactly this Jacobian determinant, the result carries a `note`
+/// identifier that the notebook expands into a localized explanation.
+const JACOBIAN_EXAMPLE: &str = "Det[D[{(1+x y)^3 z + y^2 (1 + x y) (4 + 3x y), y + 3x (1 + x y)^2 z + 3x y^2 (4 + 3x y), 2x - 3x^2 y - x^3 z}, {{x,y,z}}]]";
+
+/// A note identifier for inputs whose *meaning* deserves a remark — compared as
+/// parsed ASTs, so whitespace, comments, and explicit `*` don't matter.
+fn note_for(input: &str) -> Option<&'static str> {
+    use std::sync::OnceLock;
+    static REFERENCE: OnceLock<Option<ast::Expr>> = OnceLock::new();
+    let reference = REFERENCE.get_or_init(|| parser::parse(JACOBIAN_EXAMPLE).ok());
+    let parsed = parser::parse(input).ok()?;
+    (reference.as_ref() == Some(&parsed)).then_some("jacobian-conjecture")
 }
 
 fn run(input: &str) -> EResult<Value> {
@@ -629,6 +649,16 @@ mod tests {
             "Det[D[{(1+x y)^3 z + y^2 (1 + x y) (4 + 3x y), y + 3x (1 + x y)^2 z + 3x y^2 (4 + 3x y), 2x - 3x^2 y - x^3 z}, {{x,y,z}}]]",
         );
         assert!(jd.contains("\"text\":\"-2\""), "{jd}");
+        // The Alpöge counterexample carries an explanatory note — matched on
+        // the parsed AST, so spacing and explicit `*` don't matter…
+        assert!(jd.contains("\"note\":\"jacobian-conjecture\""), "{jd}");
+        let variant = out(
+            "Det[D[{(1 + x*y)^3*z + y^2*(1 + x*y)*(4 + 3*x*y), y + 3*x*(1 + x*y)^2*z + 3*x*y^2*(4 + 3*x*y), 2*x - 3*x^2*y - x^3*z}, {{x, y, z}}]]",
+        );
+        assert!(variant.contains("\"note\":\"jacobian-conjecture\""), "{variant}");
+        // …but other computations carry no note.
+        assert!(!out("Det[D[{x + y, x - y}, {{x, y}}]]").contains("\"note\""));
+        assert!(!out("1 + 1").contains("\"note\""));
     }
 
     #[test]

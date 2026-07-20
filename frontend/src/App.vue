@@ -308,6 +308,9 @@ async function shareNotebook() {
                   />
                   <div v-else class="error">{{ entry.result.error }}</div>
                   <div v-if="entry.result.approx" class="approx">≈ {{ entry.result.approx }}</div>
+                  <div v-if="entry.result.note" class="result-note">
+                    {{ t('notes.' + entry.result.note) }}
+                  </div>
                 </template>
               </template>
             </div>
