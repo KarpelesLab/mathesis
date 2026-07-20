@@ -153,7 +153,7 @@ export const CATEGORIES: Category[] = [
     id: 'calculus',
     title: t('Calculus', 'Analyse', '解析'),
     fns: [
-      { name: 'D', syntax: 'D[f, x]  ·  D[f, {x, n}]  ·  D[f, {{x, y, …}}]', examples: ['D[x^3 + x, x]', 'D[x^2 y, {{x, y}}]', 'Det[D[{x + y, x y}, {{x, y}}]]'], desc: t('Symbolic derivative of a polynomial expression: ∂f/∂x, the n-th derivative, the gradient, or (of a list of functions) the Jacobian matrix. Free symbols are the variables; juxtaposition multiplies (2 x, x y).', "Dérivée symbolique d'une expression polynomiale : ∂f/∂x, la dérivée n-ième, le gradient, ou (d'une liste de fonctions) la matrice jacobienne. Les symboles libres sont les variables ; la juxtaposition multiplie (2 x, x y).", '多項式式の記号微分：∂f/∂x、n 階微分、勾配、または（関数のリストなら）ヤコビ行列。自由記号が変数となり、並置は乗算（2 x, x y）。') },
+      { name: 'D', syntax: 'D[f, x]  ·  D[f, {x, n}]  ·  D[f, {{x, y, …}}]', examples: ['D[x^3 + x, x]', 'D[x^2 y, {{x, y}}]', 'Det[D[{(1+x y)^3 z + y^2 (1 + x y) (4 + 3x y), y + 3x (1 + x y)^2 z + 3x y^2 (4 + 3x y), 2x - 3x^2 y - x^3 z}, {{x,y,z}}]]'], desc: t('Symbolic derivative of a polynomial expression: ∂f/∂x, the n-th derivative, the gradient, or (of a list of functions) the Jacobian matrix. Free symbols are the variables; juxtaposition multiplies (2 x, x y).', "Dérivée symbolique d'une expression polynomiale : ∂f/∂x, la dérivée n-ième, le gradient, ou (d'une liste de fonctions) la matrice jacobienne. Les symboles libres sont les variables ; la juxtaposition multiplie (2 x, x y).", '多項式式の記号微分：∂f/∂x、n 階微分、勾配、または（関数のリストなら）ヤコビ行列。自由記号が変数となり、並置は乗算（2 x, x y）。') },
     ],
   },
   {
