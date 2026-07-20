@@ -57,6 +57,8 @@ Exact evaluation of a numeric core:
 | `Sqrt[2]` | `√2` &nbsp; (≈ 1.4142135623730951) |
 | `N[Pi, 40]` | `3.1415926535897932384626433832795028841972` |
 | `Sin[Pi/4]` | `0.7071067811865476` |
+| `D[x^3 + x, x]` | `1 + 3 x²` |
+| `Det[D[{x + y, x y}, {{x, y}}]]` | `x - y` |
 
 **Exact is preferred, with the decimal shown alongside.** Results are kept exact
 whenever possible, and anything that isn't a plain integer also shows a decimal
@@ -73,7 +75,9 @@ There is no symbolic simplifier yet, so exact irrationals survive only as leaves
 
 Syntax supported: integer & exact-decimal literals, `+ - * / ^`, unary minus,
 postfix `!`, parentheses, `{lists}`, function calls `Head[args]`, and `%` for the
-previous result. **Session variables** bind with `=` — `x = RandomPrime[1000]`,
+previous result. **Juxtaposition is multiplication**, as in Mathematica — `2 x`,
+`x y`, and `3(x + 1)` all mean products, binding like `*` (so `x y^2` is
+`x*(y^2)`). **Session variables** bind with `=` — `x = RandomPrime[1000]`,
 then reuse `x` in later cells (`==` remains equality; built-in constants like
 `Pi` are protected). Variables live for the browser session and clear on reload. Wolfram-style
 `(* … *)` comments (nestable) are allowed anywhere whitespace is.
@@ -115,7 +119,16 @@ Builtins (all delegating to `puremp`):
   **inexact** complex once an irrational or transcendental enters: `Pi*I`
   → `3.14159… I`, `Sqrt[-2]` → `1.41421… I`, `Exp[I*Pi]` ≈ `-1`. `Sqrt`, `Exp`,
   `Log`, `Sin`, and `Cos` accept complex arguments.
-- **Linear algebra** (exact, over rationals) — `Det`, `Inverse`, `Transpose`,
+- **Calculus** (symbolic, polynomials over ℚ) — `D` differentiates polynomial
+  expressions exactly, with free symbols as the variables: `D[f, x]` (partial
+  derivative), `D[f, x, y]` (successive), `D[f, {x, n}]` (n-th), `D[f, {{x, y, …}}]`
+  (gradient), and `D[{f1, f2, …}, {{x, y, …}}]` (the Jacobian matrix). Results
+  are polynomial values that feed back into arithmetic and into `Det` — so
+  `Det[D[{…}, {{x, y, z}}]]` is an exact Jacobian determinant. Only polynomial
+  expressions are supported for now (no `Sin`, `Exp`, … — a temporary stand-in
+  until a symbolic engine crate exists to delegate to).
+- **Linear algebra** (exact, over rationals) — `Det` (entries may also be
+  polynomials, e.g. a Jacobian from `D`), `Inverse`, `Transpose`,
   `Dot`, `MatrixRank`, `LinearSolve`, `IdentityMatrix`, `Eigenvalues` (exact real
   spectrum as **algebraic numbers** — radicals where possible, e.g.
   `Eigenvalues[{{0,1},{2,0}}]` → `{√2, -√2}`; complex eigenvalues are omitted);

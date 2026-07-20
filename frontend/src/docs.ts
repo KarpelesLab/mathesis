@@ -138,7 +138,7 @@ export const CATEGORIES: Category[] = [
     id: 'linearalgebra',
     title: t('Linear algebra', 'Algèbre linéaire', '線形代数'),
     fns: [
-      { name: 'Det', syntax: 'Det[m]', examples: ['Det[{{1, 2}, {3, 4}}]'], desc: t('Determinant of a square matrix.', "Déterminant d'une matrice carrée.", '正方行列の行列式。') },
+      { name: 'Det', syntax: 'Det[m]', examples: ['Det[{{1, 2}, {3, 4}}]', 'Det[D[{x + y, x y}, {{x, y}}]]'], desc: t('Determinant of a square matrix — entries may be numbers or polynomials (e.g. a Jacobian from D).', "Déterminant d'une matrice carrée — à coefficients numériques ou polynomiaux (p. ex. une jacobienne issue de D).", '正方行列の行列式。成分は数または多項式（D のヤコビ行列など）。') },
       { name: 'Inverse', syntax: 'Inverse[m]', examples: ['Inverse[{{1, 2}, {3, 4}}]'], desc: t('Matrix inverse.', "Inverse d'une matrice.", '逆行列。') },
       { name: 'Transpose', syntax: 'Transpose[m]', examples: ['Transpose[{{1, 2}, {3, 4}}]'], desc: t('Matrix transpose.', "Transposée d'une matrice.", '転置行列。') },
       { name: 'Dot', syntax: 'Dot[a, b]', examples: ['Dot[{{1, 2}, {3, 4}}, {{0, 1}, {1, 0}}]'], desc: t('Matrix product.', 'Produit matriciel.', '行列の積。') },
@@ -147,6 +147,13 @@ export const CATEGORIES: Category[] = [
       { name: 'LinearSolve', syntax: 'LinearSolve[m, b]', examples: ['LinearSolve[{{1, 1}, {1, -1}}, {3, 1}]'], desc: t('Solve the linear system m·x = b.', 'Résout le système linéaire m·x = b.', '連立一次方程式 m·x = b を解く。') },
       { name: 'IdentityMatrix', syntax: 'IdentityMatrix[n]', examples: ['IdentityMatrix[3]'], desc: t('The n×n identity matrix.', 'La matrice identité n×n.', 'n×n の単位行列。') },
       { name: 'LatticeReduce', syntax: 'LatticeReduce[{{…}, …}]', examples: ['LatticeReduce[{{1, 1, 1}, {-1, 0, 2}, {3, 5, 6}}]'], desc: t('LLL-reduced basis of an integer lattice.', "Base réduite (LLL) d'un réseau entier.", '整数格子の LLL 簡約基底。') },
+    ],
+  },
+  {
+    id: 'calculus',
+    title: t('Calculus', 'Analyse', '解析'),
+    fns: [
+      { name: 'D', syntax: 'D[f, x]  ·  D[f, {x, n}]  ·  D[f, {{x, y, …}}]', examples: ['D[x^3 + x, x]', 'D[x^2 y, {{x, y}}]', 'Det[D[{x + y, x y}, {{x, y}}]]'], desc: t('Symbolic derivative of a polynomial expression: ∂f/∂x, the n-th derivative, the gradient, or (of a list of functions) the Jacobian matrix. Free symbols are the variables; juxtaposition multiplies (2 x, x y).', "Dérivée symbolique d'une expression polynomiale : ∂f/∂x, la dérivée n-ième, le gradient, ou (d'une liste de fonctions) la matrice jacobienne. Les symboles libres sont les variables ; la juxtaposition multiplie (2 x, x y).", '多項式式の記号微分：∂f/∂x、n 階微分、勾配、または（関数のリストなら）ヤコビ行列。自由記号が変数となり、並置は乗算（2 x, x y）。') },
     ],
   },
   {

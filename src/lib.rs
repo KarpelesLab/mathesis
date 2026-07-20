@@ -12,9 +12,11 @@
 //! error message).
 
 mod ast;
+mod diff;
 mod error;
 mod eval;
 mod lexer;
+mod mpoly;
 mod parser;
 mod elliptic;
 mod plot;
@@ -566,6 +568,67 @@ mod tests {
         assert!(out("N[PolyGamma[1], 10]").contains("-0.5772156649")); // digamma(1) = -γ
         assert!(out("N[PolyGamma[1, 1], 10]").contains("1.644934066")); // trigamma(1) = π²/6
         assert!(out("N[BesselY[0, 1], 10]").contains("0.0882569642"));
+    }
+
+    #[test]
+    fn implicit_multiplication() {
+        // Juxtaposition is multiplication, binding like `*`.
+        assert!(out("2 3").contains("\"text\":\"6\""));
+        assert!(out("3(4 + 1)").contains("\"text\":\"15\""));
+        assert!(out("(1 + 1)(2 + 3)").contains("\"text\":\"10\""));
+        // `^` still binds tighter: 2 3^2 = 2·9.
+        assert!(out("2 3^2").contains("\"text\":\"18\""));
+        // 1/2 4 = (1/2)·4, left-associative at the `*` level.
+        assert!(out("1/2 4").contains("\"text\":\"2\""));
+        // Works with session variables.
+        out("imv = 7");
+        assert!(out("2 imv").contains("\"text\":\"14\""));
+    }
+
+    #[test]
+    fn differentiation() {
+        assert!(out("D[x^2, x]").contains("\"text\":\"2 x\""), "{}", out("D[x^2, x]"));
+        assert!(out("D[x^3 + x, x]").contains("\"text\":\"1 + 3 x^2\""), "{}", out("D[x^3 + x, x]"));
+        // Products, quotients by constants, and higher derivatives.
+        assert!(out("D[x^2 y, y]").contains("\"text\":\"x^2\""), "{}", out("D[x^2 y, y]"));
+        assert!(out("D[x^3, {x, 2}]").contains("\"text\":\"6 x\""), "{}", out("D[x^3, {x, 2}]"));
+        assert!(out("D[x^2/2, x]").contains("\"text\":\"x\""), "{}", out("D[x^2/2, x]"));
+        // A constant derivative collapses to a number.
+        assert!(out("D[5 x, x]").contains("\"text\":\"5\""));
+        // Gradient of a scalar, and the Jacobian of a vector of functions.
+        assert!(
+            out("D[x^2 y, {{x, y}}]").contains("\"text\":\"{2 x y, x^2}\""),
+            "{}",
+            out("D[x^2 y, {{x, y}}]")
+        );
+        let jac = out("D[{x + y, x y}, {{x, y}}]");
+        assert!(jac.contains("{{1, 1}, {y, x}}"), "{jac}");
+        assert!(jac.contains("bmatrix"), "{jac}");
+        // D results feed back into arithmetic.
+        assert!(out("D[x^2, x] + 1").contains("\"text\":\"1 + 2 x\""));
+        assert!(out("D[x^2, x]^2").contains("\"text\":\"4 x^2\""));
+        // Fractional coefficients render as fractions.
+        assert!(out("D[x^2/4, x]").contains("1/2 x"), "{}", out("D[x^2/4, x]"));
+        // Non-polynomial input is rejected clearly.
+        assert!(out("D[Sin[x], x]").contains("\"ok\":false"));
+        assert!(out("D[x^y, x]").contains("\"ok\":false"));
+    }
+
+    #[test]
+    fn jacobian_determinant() {
+        assert!(out("Det[D[{x + y, x - y}, {{x, y}}]]").contains("\"text\":\"-2\""));
+        // A non-constant polynomial determinant: det {{2x, 1}, {0, 2y}} = 4xy.
+        assert!(
+            out("Det[D[{x^2 + y, y^2}, {{x, y}}]]").contains("\"text\":\"4 x y\""),
+            "{}",
+            out("Det[D[{x^2 + y, y^2}, {{x, y}}]]")
+        );
+        // A polynomial-automorphism Jacobian (implicit multiplication
+        // throughout): the determinant is exactly the constant -2.
+        let jd = out(
+            "Det[D[{(1+x y)^3 z + y^2 (1 + x y) (4 + 3x y), y + 3x (1 + x y)^2 z + 3x y^2 (4 + 3x y), 2x - 3x^2 y - x^3 z}, {{x,y,z}}]]",
+        );
+        assert!(jd.contains("\"text\":\"-2\""), "{jd}");
     }
 
     #[test]

@@ -66,6 +66,12 @@ fn lookup(name: &str) -> Option<Value> {
     })
 }
 
+/// The value bound to `name`, if any — local (Plot) bindings shadow session
+/// variables. Used by held forms (`D`) to substitute known values.
+pub(crate) fn binding(name: &str) -> Option<Value> {
+    lookup(name).or_else(|| global_get(name))
+}
+
 /// Evaluate `expr` with extra variable bindings in scope. Used by `Plot` to bind
 /// the plot variable to each sample point.
 pub fn eval_bound(expr: &Expr, bindings: Vec<(String, Value)>) -> EResult<Value> {
@@ -129,6 +135,9 @@ pub fn eval(e: &Expr) -> EResult<Value> {
         Expr::Call(head, args) if matches!(head.as_str(), "Plot" | "Plot3D") => {
             crate::plot::plot_form(head, args)
         }
+        // D holds its arguments — the free symbols *are* the variables to
+        // differentiate with respect to, not undefined names.
+        Expr::Call(head, args) if head == "D" => crate::diff::d_form(args),
         Expr::Call(head, args) => {
             let vs = args.iter().map(eval).collect::<EResult<Vec<_>>>()?;
             call(head, &vs)
@@ -155,7 +164,7 @@ fn decimal_literal(int: &str, frac: &str) -> EResult<Value> {
 fn symbol(name: &str) -> EResult<Value> {
     // Local (Plot) bindings shadow session variables, which shadow nothing but
     // the built-in constants below.
-    if let Some(v) = lookup(name).or_else(|| global_get(name)) {
+    if let Some(v) = binding(name) {
         return Ok(v);
     }
     match name {
@@ -492,14 +501,30 @@ fn call(head: &str, args: &[Value]) -> EResult<Value> {
             let r = as_exact_rational(&args[0])?;
             Ok(value::from_rational(r.approximate(&value::as_int(&args[1])?)))
         }
-        // --- matrices (exact, over rationals) ---
+        // --- matrices (exact, over rationals or polynomials) ---
         "Det" => {
             arity(head, args, 1)?;
-            let m = rat_matrix(&args[0])?;
-            if !m.is_square() {
-                return err("Det: the matrix must be square");
+            // Rational entries take the fast (fraction-free) path in puremp; a
+            // matrix with polynomial entries (e.g. a Jacobian from D) expands
+            // by minors instead.
+            match rat_matrix(&args[0]) {
+                Ok(m) => {
+                    if !m.is_square() {
+                        return err("Det: the matrix must be square");
+                    }
+                    Ok(value::from_rational(m.determinant()))
+                }
+                Err(_) => {
+                    let m = mpoly_matrix(&args[0])?;
+                    if m.iter().any(|r| r.len() != m.len()) {
+                        return err("Det: the matrix must be square");
+                    }
+                    if m.len() > 8 {
+                        return err("Det: a matrix with polynomial entries is limited to 8×8");
+                    }
+                    Ok(value::from_mpoly(poly_det(&m)))
+                }
             }
-            Ok(value::from_rational(m.determinant()))
         }
         "Inverse" => {
             arity(head, args, 1)?;
@@ -917,6 +942,64 @@ fn rat_matrix(v: &Value) -> EResult<Matrix<Rational>> {
         return err("all matrix rows must have the same (nonzero) length");
     }
     Ok(Matrix::from_rows(data))
+}
+
+/// Read a `{{…}, …}` list-of-lists as a matrix of polynomials (numeric entries
+/// become constants), checking that it is non-empty and rectangular.
+fn mpoly_matrix(v: &Value) -> EResult<Vec<Vec<crate::mpoly::MPoly>>> {
+    let rows = match v {
+        Value::List(rows) => rows,
+        _ => return err("expected a matrix, e.g. {{1, 2}, {3, 4}}"),
+    };
+    if rows.is_empty() {
+        return err("the matrix has no rows");
+    }
+    let mut data = Vec::with_capacity(rows.len());
+    for row in rows {
+        let cells = match row {
+            Value::List(cells) => cells,
+            _ => return err("each matrix row must be a list, e.g. {1, 2, 3}"),
+        };
+        data.push(
+            cells
+                .iter()
+                .map(value::as_mpoly)
+                .collect::<EResult<Vec<_>>>()
+                .map_err(|_| EvalError("matrix entries must be rational numbers or polynomials".into()))?,
+        );
+    }
+    let width = data[0].len();
+    if width == 0 || data.iter().any(|r| r.len() != width) {
+        return err("all matrix rows must have the same (nonzero) length");
+    }
+    Ok(data)
+}
+
+/// Determinant over polynomial entries, by expansion along the first row
+/// (skipping zero entries) — fine at notebook sizes.
+fn poly_det(m: &[Vec<crate::mpoly::MPoly>]) -> crate::mpoly::MPoly {
+    if m.len() == 1 {
+        return m[0][0].clone();
+    }
+    let mut acc = crate::mpoly::MPoly::zero();
+    for (j, e) in m[0].iter().enumerate() {
+        if e.is_zero() {
+            continue;
+        }
+        let minor: Vec<Vec<crate::mpoly::MPoly>> = m[1..]
+            .iter()
+            .map(|row| {
+                row.iter()
+                    .enumerate()
+                    .filter(|(k, _)| *k != j)
+                    .map(|(_, x)| x.clone())
+                    .collect()
+            })
+            .collect();
+        let cof = e.mul(&poly_det(&minor));
+        acc = if j % 2 == 0 { acc.add(&cof) } else { acc.sub(&cof) };
+    }
+    acc
 }
 
 fn matrix_to_value(m: &Matrix<Rational>) -> Value {

@@ -5,13 +5,14 @@
 //! | operator            | binding | assoc  |
 //! |---------------------|---------|--------|
 //! | `+` `-` (binary)    | 10      | left   |
-//! | `*` `/`             | 20      | left   |
+//! | `*` `/`, juxtapos.  | 20      | left   |
 //! | unary `-` / `+`     | 30      | prefix |
 //! | `^`                 | 40      | right  |
 //! | `!` (factorial)     | 50      | postfix|
 //!
 //! So `-2^2` is `-(2^2) = -4` and `2^-2` is `2^(-2)`, exactly as Mathematica
-//! parses them.
+//! parses them. Juxtaposition is multiplication (`2 x`, `x y`, `3(x + 1)`),
+//! binding like `*` — so `x y^2` is `x*(y^2)` and `1/2 x` is `(1/2)*x`.
 
 use crate::ast::{Expr, Op};
 use crate::lexer::{Tok, lex};
@@ -85,6 +86,21 @@ impl Parser {
                 self.bump();
                 let value = self.expr(1)?;
                 lhs = Expr::Assign { name, value: Box::new(value) };
+                continue;
+            }
+
+            // Juxtaposition — a token that can only start an operand directly
+            // after a complete operand — is implicit multiplication, binding
+            // exactly like `*`. (`{` is excluded: lists don't multiply.)
+            if matches!(
+                self.peek(),
+                Tok::Num { .. } | Tok::Ident(_) | Tok::LParen | Tok::Percent
+            ) {
+                if 20 < min_bp {
+                    break;
+                }
+                let rhs = self.expr(21)?;
+                lhs = Expr::Bin(Op::Mul, Box::new(lhs), Box::new(rhs));
                 continue;
             }
 

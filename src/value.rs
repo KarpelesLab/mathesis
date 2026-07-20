@@ -14,6 +14,7 @@
 use puremp::{Algebraic, Complex, Float, Int, Quadratic, Rational, RoundingMode};
 
 use crate::error::{EResult, EvalError, err};
+use crate::mpoly::MPoly;
 
 /// Working precision (bits) for constants and transcendentals — ~308 decimal
 /// digits, generous headroom so `N[Pi, 200]` is still fully backed.
@@ -50,6 +51,9 @@ pub enum Value {
     /// or transcendental enters a complex computation (`Pi*I`, `Sqrt[-2]`,
     /// `Exp[I*Pi]`). Imaginary part guaranteed nonzero (see [`from_complex_float`]).
     CplxReal(Complex<Float>),
+    /// An exact multivariate polynomial over ℚ (from `D[..]`). Guaranteed
+    /// non-constant — a constant collapses to `Int`/`Ratio` (see [`from_mpoly`]).
+    Poly(MPoly),
     Bool(bool),
     /// Opaque plain text — a string literal, or verbatim solver output from
     /// `SMT[..]`. Rendered as monospace, never typeset as math.
@@ -78,6 +82,30 @@ pub struct SolutionTable {
     pub vars: Vec<String>,
     pub rows: Vec<Vec<String>>,
     pub truncated: bool,
+}
+
+/// Wrap a polynomial, collapsing a constant one back to `Int`/`Ratio` so a
+/// derivative that happens to be a number renders (and computes) as a number.
+pub fn from_mpoly(p: MPoly) -> Value {
+    match p.as_constant() {
+        Some(c) => from_rational(c),
+        None => Value::Poly(p),
+    }
+}
+
+fn is_poly(v: &Value) -> bool {
+    matches!(v, Value::Poly(_))
+}
+
+/// View an exact value as a polynomial (numbers become constants), for
+/// arithmetic that mixes `D[..]` results with ordinary numbers.
+pub(crate) fn as_mpoly(v: &Value) -> EResult<MPoly> {
+    match v {
+        Value::Poly(p) => Ok(p.clone()),
+        Value::Int(n) => Ok(MPoly::constant(Rational::from_integer(n.clone()))),
+        Value::Ratio(r) => Ok(MPoly::constant(r.clone())),
+        _ => err("a polynomial can only combine with exact rational numbers"),
+    }
 }
 
 /// Collapse a rational to an integer when it is one — the canonical form used
@@ -430,7 +458,9 @@ pub fn real(f: Float) -> EResult<Value> {
 // the real path as soon as either operand is a [`Value::Real`].
 
 pub fn add(a: &Value, b: &Value) -> EResult<Value> {
-    if is_complex(a) || is_complex(b) {
+    if is_poly(a) || is_poly(b) {
+        Ok(from_mpoly(as_mpoly(a)?.add(&as_mpoly(b)?)))
+    } else if is_complex(a) || is_complex(b) {
         if exact_complex_ok(a) && exact_complex_ok(b) {
             Ok(from_complex(complex_rat(a)?.add(&complex_rat(b)?)))
         } else {
@@ -446,7 +476,9 @@ pub fn add(a: &Value, b: &Value) -> EResult<Value> {
 }
 
 pub fn sub(a: &Value, b: &Value) -> EResult<Value> {
-    if is_complex(a) || is_complex(b) {
+    if is_poly(a) || is_poly(b) {
+        Ok(from_mpoly(as_mpoly(a)?.sub(&as_mpoly(b)?)))
+    } else if is_complex(a) || is_complex(b) {
         if exact_complex_ok(a) && exact_complex_ok(b) {
             Ok(from_complex(complex_rat(a)?.sub(&complex_rat(b)?)))
         } else {
@@ -462,7 +494,9 @@ pub fn sub(a: &Value, b: &Value) -> EResult<Value> {
 }
 
 pub fn mul(a: &Value, b: &Value) -> EResult<Value> {
-    if is_complex(a) || is_complex(b) {
+    if is_poly(a) || is_poly(b) {
+        Ok(from_mpoly(as_mpoly(a)?.mul(&as_mpoly(b)?)))
+    } else if is_complex(a) || is_complex(b) {
         if exact_complex_ok(a) && exact_complex_ok(b) {
             Ok(from_complex(complex_rat(a)?.mul(&complex_rat(b)?)))
         } else {
@@ -478,6 +512,18 @@ pub fn mul(a: &Value, b: &Value) -> EResult<Value> {
 }
 
 pub fn div(a: &Value, b: &Value) -> EResult<Value> {
+    if is_poly(b) {
+        // `Value::Poly` is never constant, so this is a genuine polynomial
+        // divisor — the quotient would not be a polynomial.
+        return err("division by a polynomial is not supported");
+    }
+    if is_poly(a) {
+        let rb = to_rational(b)?;
+        if rb.is_zero() {
+            return err("division by zero");
+        }
+        return Ok(from_mpoly(as_mpoly(a)?.scalar_mul(&Rational::ONE.div(&rb))));
+    }
     if is_complex(a) || is_complex(b) {
         if exact_complex_ok(a) && exact_complex_ok(b) {
             let cb = complex_rat(b)?;
@@ -515,6 +561,7 @@ pub fn div(a: &Value, b: &Value) -> EResult<Value> {
 
 pub fn neg(a: &Value) -> EResult<Value> {
     match a {
+        Value::Poly(p) => Ok(Value::Poly(p.neg())),
         Value::Cplx(c) => Ok(from_complex(c.neg())),
         Value::CplxReal(c) => {
             from_complex_float(Complex::new(c.re.neg(), c.im.neg()))
@@ -537,6 +584,21 @@ pub fn abs(v: &Value) -> EResult<Value> {
 }
 
 pub fn pow(base: &Value, exp: &Value) -> EResult<Value> {
+    // A polynomial base — only a constant non-negative integer power stays
+    // polynomial (`Value::Poly` is never constant, so a negative power can't
+    // collapse to a number).
+    if is_poly(base) || is_poly(exp) {
+        let Value::Poly(p) = base else {
+            return err("a polynomial exponent is not supported");
+        };
+        let n = to_i64(&as_int(exp).map_err(|_| {
+            EvalError("a polynomial can only be raised to a constant integer power".into())
+        })?)?;
+        if !(0..=1024).contains(&n) {
+            return err("a polynomial power must be between 0 and 1024");
+        }
+        return Ok(from_mpoly(p.pow(n as u32)));
+    }
     // Complex base or exponent.
     if is_complex(base) || is_complex(exp) {
         // An integer exponent stays exact when the base is exact.
@@ -602,6 +664,7 @@ impl Value {
             },
             Value::Cplx(c) => complex_render(c, false),
             Value::CplxReal(c) => complex_render_float(c, false),
+            Value::Poly(p) => p.to_text(),
             Value::Graphics(_) => "«graphics»".to_string(),
             Value::Text(s) => s.clone(),
             Value::Bool(b) => if *b { "True" } else { "False" }.to_string(),
@@ -665,6 +728,7 @@ impl Value {
             },
             Value::Cplx(c) => complex_render(c, true),
             Value::CplxReal(c) => complex_render_float(c, true),
+            Value::Poly(p) => p.to_tex(),
             Value::Graphics(_) => "«graphics»".to_string(),
             // Not typeset — the frontend renders text results as monospace via
             // the `plain` flag; this arm exists only for completeness.
