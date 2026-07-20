@@ -126,7 +126,11 @@ Builtins (all delegating to `puremp`):
   are polynomial values that feed back into arithmetic and into `Det` — so
   `Det[D[{…}, {{x, y, z}}]]` is an exact Jacobian determinant. Only polynomial
   expressions are supported for now (no `Sin`, `Exp`, … — a temporary stand-in
-  until a symbolic engine crate exists to delegate to).
+  until a symbolic engine crate exists to delegate to). The showcase example in
+  the Docs panel is the map from Alpöge's 2026 counterexample to the
+  [Jacobian conjecture](https://en.wikipedia.org/wiki/Jacobian_conjecture):
+  Mathesis verifies exactly that its Jacobian determinant is the constant `-2`,
+  even though the map is not injective (`F(1, 0, 2) = F(0, 6, -142)`).
 - **Linear algebra** (exact, over rationals) — `Det` (entries may also be
   polynomials, e.g. a Jacobian from `D`), `Inverse`, `Transpose`,
   `Dot`, `MatrixRank`, `LinearSolve`, `IdentityMatrix`, `Eigenvalues` (exact real
